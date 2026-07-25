@@ -48,8 +48,7 @@ const routes = [
       {
         path: 'leaves',
         name: 'Leaves',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Leave Requests & Balances', icon: 'ti ti-calendar-off' }
+        component: () => import('../views/hrm/LeavesView.vue')
       },
       {
         path: 'holidays',
