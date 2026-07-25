@@ -9,83 +9,78 @@ export const useLeaveStore = defineStore('leaves', () => {
   const leaveRequests = ref([
     {
       id: 1,
+      empId: 'EMP-001',
+      employeeName: 'Anthony Lewis',
+      department: 'Finance',
+      avatar: '/assets/img/profiles/avatar-02.jpg',
       leaveType: 'Medical Leave',
-      fromDate: '14 Jan 2024',
-      toDate: '15 Jan 2024',
+      reason: 'Experiencing high fever and under medical prescription.',
+      fromDate: '2024-01-14',
+      toDate: '2024-01-15',
       noOfDays: 2,
-      approverName: 'Doglas Martini',
-      approverRole: 'Manager',
-      approverAvatar: '/assets/img/profiles/avatar-03.jpg',
-      status: 'Approved',
-      reason: 'I am currently experiencing a fever and feeling unwell.'
+      status: 'Approved'
     },
     {
       id: 2,
-      leaveType: 'Annual Leave',
-      fromDate: '21 Jan 2024',
-      toDate: '25 Jan 2024',
+      empId: 'EMP-002',
+      employeeName: 'Brian Villalobos',
+      department: 'Development',
+      avatar: '/assets/img/profiles/avatar-03.jpg',
+      leaveType: 'Casual Leave',
+      reason: 'Personal family emergency.',
+      fromDate: '2024-01-21',
+      toDate: '2024-01-25',
       noOfDays: 5,
-      approverName: 'Doglas Martini',
-      approverRole: 'Manager',
-      approverAvatar: '/assets/img/profiles/avatar-03.jpg',
-      status: 'Approved',
-      reason: 'Annual family vacation leave request.'
+      status: 'Pending'
     },
     {
       id: 3,
-      leaveType: 'Medical Leave',
-      fromDate: '20 Jan 2024',
-      toDate: '22 Feb 2024',
-      noOfDays: 3,
-      approverName: 'Warren Morales',
-      approverRole: 'Admin',
-      approverAvatar: '/assets/img/profiles/avatar-05.jpg',
-      status: 'Approved',
-      reason: 'Medical checkup and rest.'
+      empId: 'EMP-003',
+      employeeName: 'Stephaney Harvey',
+      department: 'Human Resources',
+      avatar: '/assets/img/profiles/avatar-04.jpg',
+      leaveType: 'Annual Leave',
+      reason: 'Annual family vacation.',
+      fromDate: '2024-02-10',
+      toDate: '2024-02-14',
+      noOfDays: 5,
+      status: 'Approved'
     },
     {
       id: 4,
-      leaveType: 'Annual Leave',
-      fromDate: '15 Mar 2024',
-      toDate: '17 Mar 2024',
-      noOfDays: 3,
-      approverName: 'Doglas Martini',
-      approverRole: 'Manager',
-      approverAvatar: '/assets/img/profiles/avatar-03.jpg',
-      status: 'Approved',
-      reason: 'Personal time off.'
-    },
-    {
-      id: 5,
+      empId: 'EMP-004',
+      employeeName: 'Doglas Meier',
+      department: 'IT Systems',
+      avatar: '/assets/img/profiles/avatar-05.jpg',
       leaveType: 'Casual Leave',
-      fromDate: '12 Apr 2024',
-      toDate: '16 Apr 2024',
-      noOfDays: 5,
-      approverName: 'Doglas Martini',
-      approverRole: 'Manager',
-      approverAvatar: '/assets/img/profiles/avatar-03.jpg',
-      status: 'Declined',
-      reason: 'Urgent family task.'
-    },
-    {
-      id: 6,
-      leaveType: 'Medical Leave',
-      fromDate: '20 May 2024',
-      toDate: '21 Mar 2024',
+      reason: 'Personal appointments.',
+      fromDate: '2024-03-01',
+      toDate: '2024-03-02',
       noOfDays: 2,
-      approverName: 'Warren Morales',
-      approverRole: 'Admin',
-      approverAvatar: '/assets/img/profiles/avatar-05.jpg',
-      status: 'Declined',
-      reason: 'Fever recovery.'
+      status: 'Rejected'
     }
   ]);
+
+  const leaveStats = computed(() => {
+    const totalPresent = '180/200';
+    const plannedLeaves = leaveRequests.value.filter(l => l.leaveType === 'Annual Leave').length * 2 + 8;
+    const unplannedLeaves = leaveRequests.value.filter(l => l.leaveType === 'Medical Leave' || l.leaveType === 'Casual Leave').length * 2 + 4;
+    const pendingRequests = leaveRequests.value.filter(l => l.status === 'Pending').length;
+
+    return {
+      totalPresent,
+      plannedLeaves,
+      unplannedLeaves,
+      pendingRequests
+    };
+  });
 
   const filteredLeaves = computed(() => {
     return leaveRequests.value.filter(item => {
       const matchesSearch =
-        item.leaveType.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        item.approverName.toLowerCase().includes(searchQuery.value.toLowerCase());
+        item.employeeName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        item.department.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        item.leaveType.toLowerCase().includes(searchQuery.value.toLowerCase());
 
       const matchesType = leaveTypeFilter.value === 'All' || item.leaveType === leaveTypeFilter.value;
       const matchesStatus = statusFilter.value === 'All' || item.status === statusFilter.value;
@@ -95,17 +90,23 @@ export const useLeaveStore = defineStore('leaves', () => {
   });
 
   function addLeave(data) {
+    const from = new Date(data.fromDate);
+    const to = new Date(data.toDate);
+    const diffTime = Math.abs(to - from);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
     const newRequest = {
       id: Date.now(),
-      leaveType: data.leaveType || 'Casual Leave',
-      fromDate: data.fromDate || '01 Aug 2024',
-      toDate: data.toDate || '03 Aug 2024',
-      noOfDays: 2,
-      approverName: 'Doglas Martini',
-      approverRole: 'Manager',
-      approverAvatar: '/assets/img/profiles/avatar-03.jpg',
-      status: 'Pending',
-      reason: data.reason || 'Personal reasons'
+      empId: data.empId || 'EMP-001',
+      employeeName: data.employeeName || 'Current Employee',
+      department: data.department || 'General',
+      avatar: data.avatar || '/assets/img/profiles/avatar-02.jpg',
+      leaveType: data.leaveType,
+      reason: data.reason || 'Personal reasons',
+      fromDate: data.fromDate,
+      toDate: data.toDate,
+      noOfDays: isNaN(diffDays) ? 1 : diffDays,
+      status: 'Pending'
     };
     leaveRequests.value.unshift(newRequest);
   }
@@ -133,6 +134,7 @@ export const useLeaveStore = defineStore('leaves', () => {
     leaveTypeFilter,
     statusFilter,
     searchQuery,
+    leaveStats,
     filteredLeaves,
     addLeave,
     updateLeave,
