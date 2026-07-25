@@ -42,8 +42,7 @@ const routes = [
       {
         path: 'attendance',
         name: 'Attendance',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Attendance Management', icon: 'ti ti-file-time' }
+        component: () => import('../views/hrm/AttendanceView.vue')
       },
       {
         path: 'leaves',
