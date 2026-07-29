@@ -15,8 +15,7 @@ const routes = [
       {
         path: 'employee-dashboard',
         name: 'EmployeeDashboard',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Employee Self-Service Dashboard', icon: 'ti ti-user-check' }
+        component: () => import('../views/dashboard/EmployeeDashboard.vue')
       },
 
       // Core HR (Employees, Departments, Designations)
@@ -28,14 +27,12 @@ const routes = [
       {
         path: 'departments',
         name: 'Departments',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Departments', icon: 'ti ti-building' }
+        component: () => import('../views/hrm/DepartmentsView.vue')
       },
       {
         path: 'designations',
         name: 'Designations',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Designations', icon: 'ti ti-badge' }
+        component: () => import('../views/hrm/DesignationsView.vue')
       },
 
       // Attendance & Time Off
@@ -52,50 +49,43 @@ const routes = [
       {
         path: 'holidays',
         name: 'Holidays',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Holiday Calendar', icon: 'ti ti-calendar-event' }
+        component: () => import('../views/hrm/HolidaysView.vue')
       },
 
       // Payroll
       {
         path: 'payroll',
         name: 'Payroll',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Payroll Processing', icon: 'ti ti-currency-dollar' }
+        component: () => import('../views/payroll/PayrollView.vue')
       },
       {
         path: 'payslips',
         name: 'Payslips',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Employee Payslips', icon: 'ti ti-file-description' }
+        component: () => import('../views/payroll/PayslipsView.vue')
       },
 
-      // Performance & Recruitment (Phase 2)
+      // Recruitment
       {
         path: 'jobs',
         name: 'Jobs',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Job Openings', icon: 'ti ti-briefcase' }
+        component: () => import('../views/recruitment/JobsView.vue')
       },
       {
         path: 'candidates',
         name: 'Candidates',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Candidates & Applications', icon: 'ti ti-users' }
+        component: () => import('../views/recruitment/CandidatesView.vue')
       },
 
       // Settings & SaaS Admin
       {
         path: 'settings',
         name: 'Settings',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'Company Settings', icon: 'ti ti-settings' }
+        component: () => import('../views/settings/SettingsView.vue')
       },
       {
         path: 'billing',
         name: 'Billing',
-        component: () => import('../views/common/PlaceholderView.vue'),
-        props: { title: 'SaaS Subscription & Billing', icon: 'ti ti-credit-card' }
+        component: () => import('../views/billing/BillingView.vue')
       }
     ]
   },
