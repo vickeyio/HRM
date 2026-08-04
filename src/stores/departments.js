@@ -1,20 +1,14 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
+import { departmentService } from '../services/departmentService';
 
 export const useDepartmentStore = defineStore('departments', () => {
   const searchQuery = ref('');
   const statusFilter = ref('All');
-
-  const departments = ref([
-    { id: 1, name: 'Finance', employeeCount: 20, status: 'Active' },
-    { id: 2, name: 'Application Development', employeeCount: 30, status: 'Active' },
-    { id: 3, name: 'IT Management', employeeCount: 15, status: 'Active' },
-    { id: 4, name: 'Web Development', employeeCount: 20, status: 'Active' },
-    { id: 5, name: 'Sales', employeeCount: 20, status: 'Active' },
-    { id: 6, name: 'UI / UX', employeeCount: 12, status: 'Active' },
-    { id: 7, name: 'Quality Assurance', employeeCount: 8, status: 'Inactive' },
-    { id: 8, name: 'Human Resources', employeeCount: 10, status: 'Active' }
-  ]);
+  const departments = ref([]);
+  const isLoading = ref(false);
+  const error = ref(null);
+  const loaded = ref(false);
 
   const filteredDepartments = computed(() => {
     return departments.value.filter(dept => {
@@ -24,39 +18,81 @@ export const useDepartmentStore = defineStore('departments', () => {
     });
   });
 
-  function addDepartment(data) {
-    const newDept = {
-      id: Date.now(),
-      name: data.name,
-      employeeCount: Number(data.employeeCount) || 0,
-      status: data.status || 'Active'
-    };
-    departments.value.unshift(newDept);
-  }
-
-  function updateDepartment(id, updatedData) {
-    const index = departments.value.findIndex(d => d.id === id);
-    if (index !== -1) {
-      departments.value[index] = { ...departments.value[index], ...updatedData };
+  async function fetchAll() {
+    if (loaded.value) return;
+    isLoading.value = true;
+    error.value = null;
+    try {
+      departments.value = await departmentService.getAll();
+      loaded.value = true;
+    } catch (err) {
+      error.value = err.message || 'Failed to load departments';
+      console.error('[DepartmentStore] fetch failed:', err);
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  function toggleStatus(id) {
-    const dept = departments.value.find(d => d.id === id);
-    if (dept) {
-      dept.status = dept.status === 'Active' ? 'Inactive' : 'Active';
+  async function addDepartment(data) {
+    try {
+      const newDept = await departmentService.create(data);
+      departments.value.unshift(newDept);
+      return newDept;
+    } catch (err) {
+      error.value = err.message || 'Failed to add department';
+      throw err;
     }
   }
 
-  function deleteDepartment(id) {
-    departments.value = departments.value.filter(d => d.id !== id);
+  async function updateDepartment(id, updatedData) {
+    try {
+      const updated = await departmentService.update(id, updatedData);
+      const index = departments.value.findIndex(d => d.id === id);
+      if (index !== -1) {
+        departments.value[index] = updated;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to update department';
+      throw err;
+    }
   }
+
+  async function toggleStatus(id) {
+    try {
+      const updated = await departmentService.toggleStatus(id);
+      const dept = departments.value.find(d => d.id === id);
+      if (dept) {
+        dept.status = updated.status;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to toggle status';
+    }
+  }
+
+  async function deleteDepartment(id) {
+    try {
+      await departmentService.delete(id);
+      departments.value = departments.value.filter(d => d.id !== id);
+    } catch (err) {
+      error.value = err.message || 'Failed to delete department';
+      throw err;
+    }
+  }
+
+  onBeforeMount(() => {
+    fetchAll();
+  });
 
   return {
     departments,
     searchQuery,
     statusFilter,
+    isLoading,
+    error,
     filteredDepartments,
+    fetchAll,
     addDepartment,
     updateDepartment,
     toggleStatus,

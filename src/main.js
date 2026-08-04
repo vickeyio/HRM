@@ -17,6 +17,13 @@ import './assets/plugins/icons/feather/feather.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './assets/css/style.css';
 
+// Initialize mock API adapter when enabled (no backend required)
+import { setupMock } from './services/mock';
+import { config } from './config/env';
+if (config.useMock) {
+  setupMock();
+}
+
 const app = createApp(App);
 
 app.use(createPinia());

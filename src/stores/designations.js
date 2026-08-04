@@ -1,23 +1,15 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
+import { designationService } from '../services/designationService';
 
 export const useDesignationStore = defineStore('designations', () => {
   const searchQuery = ref('');
   const departmentFilter = ref('All');
   const statusFilter = ref('All');
-
-  const designations = ref([
-    { id: 1, name: 'Accountant', department: 'Finance', employeeCount: 10, status: 'Active' },
-    { id: 2, name: 'App Developer', department: 'Application Development', employeeCount: 15, status: 'Active' },
-    { id: 3, name: 'Technician', department: 'IT Management', employeeCount: 8, status: 'Active' },
-    { id: 4, name: 'Web Developer', department: 'Web Development', employeeCount: 10, status: 'Active' },
-    { id: 5, name: 'Sales Executive Officer', department: 'Sales', employeeCount: 10, status: 'Active' },
-    { id: 6, name: 'Designer', department: 'UI / UX', employeeCount: 15, status: 'Active' },
-    { id: 7, name: 'Account Manager', department: 'Account Management', employeeCount: 8, status: 'Active' },
-    { id: 8, name: 'SEO Analyst', department: 'Marketing', employeeCount: 10, status: 'Inactive' },
-    { id: 9, name: 'Admin', department: 'Administration', employeeCount: 5, status: 'Active' },
-    { id: 10, name: 'Business Analyst', department: 'Business Development', employeeCount: 7, status: 'Active' }
-  ]);
+  const designations = ref([]);
+  const isLoading = ref(false);
+  const error = ref(null);
+  const loaded = ref(false);
 
   const filteredDesignations = computed(() => {
     return designations.value.filter(des => {
@@ -29,41 +21,82 @@ export const useDesignationStore = defineStore('designations', () => {
     });
   });
 
-  function addDesignation(data) {
-    const newDes = {
-      id: Date.now(),
-      name: data.name,
-      department: data.department || 'General',
-      employeeCount: Number(data.employeeCount) || 0,
-      status: data.status || 'Active'
-    };
-    designations.value.unshift(newDes);
-  }
-
-  function updateDesignation(id, updatedData) {
-    const index = designations.value.findIndex(d => d.id === id);
-    if (index !== -1) {
-      designations.value[index] = { ...designations.value[index], ...updatedData };
+  async function fetchAll() {
+    if (loaded.value) return;
+    isLoading.value = true;
+    error.value = null;
+    try {
+      designations.value = await designationService.getAll();
+      loaded.value = true;
+    } catch (err) {
+      error.value = err.message || 'Failed to load designations';
+      console.error('[DesignationStore] fetch failed:', err);
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  function toggleStatus(id) {
-    const des = designations.value.find(d => d.id === id);
-    if (des) {
-      des.status = des.status === 'Active' ? 'Inactive' : 'Active';
+  async function addDesignation(data) {
+    try {
+      const newDes = await designationService.create(data);
+      designations.value.unshift(newDes);
+      return newDes;
+    } catch (err) {
+      error.value = err.message || 'Failed to add designation';
+      throw err;
     }
   }
 
-  function deleteDesignation(id) {
-    designations.value = designations.value.filter(d => d.id !== id);
+  async function updateDesignation(id, updatedData) {
+    try {
+      const updated = await designationService.update(id, updatedData);
+      const index = designations.value.findIndex(d => d.id === id);
+      if (index !== -1) {
+        designations.value[index] = updated;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to update designation';
+      throw err;
+    }
   }
+
+  async function toggleStatus(id) {
+    try {
+      const updated = await designationService.toggleStatus(id);
+      const des = designations.value.find(d => d.id === id);
+      if (des) {
+        des.status = updated.status;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to toggle status';
+    }
+  }
+
+  async function deleteDesignation(id) {
+    try {
+      await designationService.delete(id);
+      designations.value = designations.value.filter(d => d.id !== id);
+    } catch (err) {
+      error.value = err.message || 'Failed to delete designation';
+      throw err;
+    }
+  }
+
+  onBeforeMount(() => {
+    fetchAll();
+  });
 
   return {
     designations,
     searchQuery,
     departmentFilter,
     statusFilter,
+    isLoading,
+    error,
     filteredDesignations,
+    fetchAll,
     addDesignation,
     updateDesignation,
     toggleStatus,

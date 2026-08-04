@@ -1,26 +1,15 @@
 <template>
   <div>
     <!-- Breadcrumb & Header Controls -->
-    <div class="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
-      <div class="my-auto mb-2">
-        <h3 class="fw-bold mb-1">Leave Requests</h3>
-        <nav>
-          <ol class="breadcrumb mb-0 bg-transparent p-0">
-            <li class="breadcrumb-item"><router-link to="/"><i class="ti ti-smart-home"></i></router-link></li>
-            <li class="breadcrumb-item">Attendance</li>
-            <li class="breadcrumb-item active" aria-current="page">Leaves</li>
-          </ol>
-        </nav>
-      </div>
-      <div class="d-flex my-xl-auto right-content align-items-center flex-wrap gap-2">
-        <!-- Add Leave Button -->
-        <button class="btn btn-primary d-flex align-items-center" @click="openAddModal">
-          <i class="ti ti-circle-plus me-2"></i>Add Leave Request
-        </button>
-      </div>
-    </div>
+    <PageHeader
+      title="Leave Requests"
+      :breadcrumbs="['Attendance', 'Leaves']"
+      add-label="Add Leave Request"
+      :show-export="false"
+      @add="openAddModal"
+    />
 
-    <!-- Leaves Info Metric Cards (Exact HTML Template Match) -->
+    <!-- Leaves Info Metric Cards -->
     <div class="row">
       <div class="col-xl-3 col-md-6">
         <div class="card bg-green-img">
@@ -105,16 +94,14 @@
 
     <!-- Leaves Table Card & Toolbar -->
     <div class="card border-0 shadow-sm rounded-3">
-      <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 py-3">
-        <h5 class="fw-bold mb-0">Leave Applications Queue</h5>
-
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <!-- Search Bar -->
-          <div class="input-group input-group-sm" style="width: 220px;">
-            <input type="text" v-model="leaveStore.searchQuery" class="form-control" placeholder="Search employee..." />
-            <span class="input-group-text bg-white"><i class="ti ti-search text-muted"></i></span>
-          </div>
-
+      <DataTableToolbar
+        title="Leave Applications Queue"
+        v-model:search="leaveStore.searchQuery"
+        search-placeholder="Search employee..."
+        v-model:status="leaveStore.statusFilter"
+        :status-options="['All', 'Pending', 'Approved', 'Rejected']"
+      >
+        <template #extra-filters>
           <!-- Leave Type Filter -->
           <select v-model="leaveStore.leaveTypeFilter" class="form-select form-select-sm" style="width: 150px;">
             <option value="All">All Leave Types</option>
@@ -122,18 +109,18 @@
             <option value="Casual Leave">Casual Leave</option>
             <option value="Annual Leave">Annual Leave</option>
           </select>
+        </template>
+      </DataTableToolbar>
 
-          <!-- Status Filter -->
-          <select v-model="leaveStore.statusFilter" class="form-select form-select-sm" style="width: 140px;">
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-        </div>
+      <div v-if="leaveStore.isLoading" class="card-body p-0 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading leave requests...</p>
       </div>
-
-      <div class="card-body p-0">
+      <div v-else-if="leaveStore.error" class="card-body p-0 text-center py-5">
+        <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
+        <p class="text-muted mb-0">{{ leaveStore.error }}</p>
+      </div>
+      <div v-else class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
@@ -148,13 +135,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="leaveStore.filteredLeaves.length === 0">
+              <tr v-if="displayedItems.length === 0">
                 <td colspan="7" class="text-center py-5 text-muted">
                   <i class="ti ti-calendar-off fs-1 d-block mb-2 text-secondary"></i>
                   No leave requests found matching filters.
                 </td>
               </tr>
-              <tr v-for="leave in leaveStore.filteredLeaves" :key="leave.id">
+              <tr v-for="leave in displayedItems" :key="leave.id">
                 <td>
                   <div class="d-flex align-items-center">
                     <img :src="leave.avatar" class="rounded-circle me-2" width="36" height="36" alt="avatar" />
@@ -233,14 +220,21 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, toRef } from 'vue';
 import { useLeaveStore } from '../../stores/leaves';
+import { useCrudTable } from '../../composables/useCrudTable';
+import PageHeader from '../../components/common/PageHeader.vue';
+import DataTableToolbar from '../../components/common/DataTableToolbar.vue';
 import LeaveFormModal from '../../components/hrm/LeaveFormModal.vue';
 
 const leaveStore = useLeaveStore();
 
 const isModalOpen = ref(false);
 const selectedLeave = ref(null);
+
+const { displayedItems } = useCrudTable(toRef(leaveStore, 'filteredLeaves'), {
+  searchFields: ['employeeName', 'leaveType', 'department', 'reason']
+});
 
 function openAddModal() {
   selectedLeave.value = null;
@@ -252,17 +246,21 @@ function openEditModal(leave) {
   isModalOpen.value = true;
 }
 
-function handleSaveLeave(formData) {
-  if (selectedLeave.value && selectedLeave.value.id) {
-    leaveStore.updateLeave(selectedLeave.value.id, formData);
-  } else {
-    leaveStore.addLeave(formData);
+async function handleSaveLeave(formData) {
+  try {
+    if (selectedLeave.value && selectedLeave.value.id) {
+      await leaveStore.updateLeave(selectedLeave.value.id, formData);
+    } else {
+      await leaveStore.addLeave(formData);
+    }
+  } catch (err) {
+    console.error('Failed to save leave request:', err);
   }
 }
 
 function confirmDelete(id) {
   if (confirm('Are you sure you want to delete this leave request?')) {
-    leaveStore.deleteLeave(id);
+    leaveStore.deleteLeave(id).catch(err => console.error('Failed to delete leave request:', err));
   }
 }
 </script>

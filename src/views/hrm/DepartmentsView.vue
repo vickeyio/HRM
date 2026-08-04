@@ -1,102 +1,33 @@
 <template>
   <div>
-    <!-- Page Breadcrumb & Header -->
-    <div class="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
-      <div class="my-auto mb-2">
-        <h2 class="mb-1">Departments</h2>
-        <nav>
-          <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item">
-              <router-link to="/"><i class="ti ti-smart-home"></i></router-link>
-            </li>
-            <li class="breadcrumb-item">
-              Employees
-            </li>
-            <li class="breadcrumb-item active" aria-current="page">Departments</li>
-          </ol>
-        </nav>
-      </div>
-      <div class="d-flex my-xl-auto right-content align-items-center flex-wrap">
-        <div class="me-2 mb-2">
-          <div class="dropdown">
-            <a href="javascript:void(0);" class="dropdown-toggle btn btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
-              <i class="ti ti-file-export me-1"></i>Export
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end p-3">
-              <li>
-                <a href="javascript:void(0);" class="dropdown-item rounded-1" @click="exportData('pdf')">
-                  <i class="ti ti-file-type-pdf me-1"></i>Export as PDF
-                </a>
-              </li>
-              <li>
-                <a href="javascript:void(0);" class="dropdown-item rounded-1" @click="exportData('excel')">
-                  <i class="ti ti-file-type-xls me-1"></i>Export as Excel
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div class="mb-2">
-          <button @click="openAddModal" class="btn btn-primary d-flex align-items-center">
-            <i class="ti ti-circle-plus me-2"></i>Add Department
-          </button>
-        </div>
-        <div class="head-icons ms-2">
-          <a href="javascript:void(0);" id="collapse-header" title="Collapse">
-            <i class="ti ti-chevrons-up"></i>
-          </a>
-        </div>
-      </div>
-    </div>
-    <!-- /Breadcrumb -->
+    <!-- Page Header -->
+    <PageHeader
+      title="Departments"
+      :breadcrumbs="['Employees', 'Departments']"
+      add-label="Add Department"
+      @add="openAddModal"
+      @export="exportData"
+    />
 
     <!-- Department List Card -->
     <div class="card">
-      <div class="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
-        <h5>Department List</h5>
-        <div class="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-          <!-- Search input -->
-          <div class="me-3">
-            <div class="input-icon position-relative">
-              <span class="input-icon-addon">
-                <i class="ti ti-search text-gray-9"></i>
-              </span>
-              <input
-                type="text"
-                v-model="departmentStore.searchQuery"
-                class="form-control"
-                placeholder="Search department..."
-              />
-            </div>
-          </div>
+      <DataTableToolbar
+        title="Department List"
+        v-model:search="departmentStore.searchQuery"
+        search-placeholder="Search department..."
+        v-model:status="departmentStore.statusFilter"
+        v-model:sort="sortBy"
+      />
 
-          <!-- Status Dropdown -->
-          <div class="dropdown me-3">
-            <a href="javascript:void(0);" class="dropdown-toggle btn btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
-              Status: {{ departmentStore.statusFilter }}
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end p-3">
-              <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="departmentStore.statusFilter = 'All'">All</a></li>
-              <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="departmentStore.statusFilter = 'Active'">Active</a></li>
-              <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="departmentStore.statusFilter = 'Inactive'">Inactive</a></li>
-            </ul>
-          </div>
-
-          <!-- Sort Dropdown -->
-          <div class="dropdown">
-            <a href="javascript:void(0);" class="dropdown-toggle btn btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
-              Sort By : {{ sortByLabel }}
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end p-3">
-              <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="setSort('recent', 'Recently Added')">Recently Added</a></li>
-              <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="setSort('asc', 'Ascending')">Ascending</a></li>
-              <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="setSort('desc', 'Descending')">Descending</a></li>
-            </ul>
-          </div>
-        </div>
+      <div v-if="departmentStore.isLoading" class="card-body p-0 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading departments...</p>
       </div>
-
-      <div class="card-body p-0">
+      <div v-else-if="departmentStore.error" class="card-body p-0 text-center py-5">
+        <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
+        <p class="text-muted mb-0">{{ departmentStore.error }}</p>
+      </div>
+      <div v-else class="card-body p-0">
         <div class="custom-datatable-filter table-responsive">
           <table class="table datatable">
             <thead class="thead-light">
@@ -113,16 +44,16 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="displayedDepartments.length === 0">
+              <tr v-if="displayedItems.length === 0">
                 <td colspan="5" class="text-center py-5 text-muted">
                   <i class="ti ti-search-off fs-1 d-block mb-2 text-secondary"></i>
                   No departments found matching search criteria.
                 </td>
               </tr>
-              <tr v-for="dept in displayedDepartments" :key="dept.id">
+              <tr v-for="dept in displayedItems" :key="dept.id">
                 <td>
                   <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="dept.id" v-model="selectedDepartments">
+                    <input class="form-check-input" type="checkbox" :value="dept.id" v-model="selectedIds">
                   </div>
                 </td>
                 <td>
@@ -158,48 +89,26 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, toRef } from 'vue';
 import { useDepartmentStore } from '../../stores/departments';
+import { useCrudTable } from '../../composables/useCrudTable';
+import PageHeader from '../../components/common/PageHeader.vue';
+import DataTableToolbar from '../../components/common/DataTableToolbar.vue';
 import DepartmentFormModal from '../../components/hrm/DepartmentFormModal.vue';
 
 const departmentStore = useDepartmentStore();
 
 const isModalOpen = ref(false);
 const selectedDepartment = ref(null);
-const sortBy = ref('recent');
-const sortByLabel = ref('Recently Added');
-const selectedDepartments = ref([]);
 
-const displayedDepartments = computed(() => {
-  let result = [...departmentStore.filteredDepartments];
-
-  if (sortBy.value === 'asc') {
-    result.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sortBy.value === 'desc') {
-    result.sort((a, b) => b.name.localeCompare(a.name));
-  } else {
-    result.sort((a, b) => b.id - a.id);
-  }
-
-  return result;
-});
-
-const isAllSelected = computed(() => {
-  return displayedDepartments.value.length > 0 && selectedDepartments.value.length === displayedDepartments.value.length;
-});
-
-function toggleSelectAll(e) {
-  if (e.target.checked) {
-    selectedDepartments.value = displayedDepartments.value.map(d => d.id);
-  } else {
-    selectedDepartments.value = [];
-  }
-}
-
-function setSort(type, label) {
-  sortBy.value = type;
-  sortByLabel.value = label;
-}
+const {
+  sortBy,
+  selectedIds,
+  displayedItems,
+  isAllSelected,
+  toggleSelectAll,
+  exportData
+} = useCrudTable(toRef(departmentStore, 'filteredDepartments'), { searchFields: ['name'] });
 
 function openAddModal() {
   selectedDepartment.value = null;
@@ -211,21 +120,21 @@ function openEditModal(dept) {
   isModalOpen.value = true;
 }
 
-function handleSaveDepartment(formData) {
-  if (selectedDepartment.value && selectedDepartment.value.id) {
-    departmentStore.updateDepartment(selectedDepartment.value.id, formData);
-  } else {
-    departmentStore.addDepartment(formData);
+async function handleSaveDepartment(formData) {
+  try {
+    if (selectedDepartment.value && selectedDepartment.value.id) {
+      await departmentStore.updateDepartment(selectedDepartment.value.id, formData);
+    } else {
+      await departmentStore.addDepartment(formData);
+    }
+  } catch (err) {
+    console.error('Failed to save department:', err);
   }
 }
 
 function confirmDelete(id) {
   if (confirm('Are you sure you want to delete this department?')) {
-    departmentStore.deleteDepartment(id);
+    departmentStore.deleteDepartment(id).catch(err => console.error('Failed to delete department:', err));
   }
-}
-
-function exportData(format) {
-  alert(`Exporting Departments as ${format.toUpperCase()}...`);
 }
 </script>

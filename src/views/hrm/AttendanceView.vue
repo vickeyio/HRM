@@ -151,7 +151,15 @@
         </div>
       </div>
 
-      <div class="card-body p-0">
+       <div v-if="attendanceStore.isLoading" class="card-body p-0 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading attendance records...</p>
+      </div>
+      <div v-else-if="attendanceStore.error" class="card-body p-0 text-center py-5">
+        <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
+        <p class="text-muted mb-0">{{ attendanceStore.error }}</p>
+      </div>
+      <div v-else class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
@@ -226,13 +234,17 @@ import { useAttendanceStore } from '../../stores/attendance';
 
 const attendanceStore = useAttendanceStore();
 
-function toggleStatus(log) {
+async function toggleStatus(log) {
   const newStatus = log.status === 'Present' ? 'Absent' : 'Present';
-  attendanceStore.updateLog(log.id, {
-    status: newStatus,
-    checkIn: newStatus === 'Present' ? '09:00 AM' : '-',
-    checkOut: newStatus === 'Present' ? '06:00 PM' : '-',
-    productionHours: newStatus === 'Present' ? '8.00 Hrs' : '0.00 Hrs'
-  });
+  try {
+    await attendanceStore.updateLog(log.id, {
+      status: newStatus,
+      checkIn: newStatus === 'Present' ? '09:00 AM' : '-',
+      checkOut: newStatus === 'Present' ? '06:00 PM' : '-',
+      productionHours: newStatus === 'Present' ? '8.00 Hrs' : '0.00 Hrs'
+    });
+  } catch (err) {
+    console.error('Failed to update attendance:', err);
+  }
 }
 </script>

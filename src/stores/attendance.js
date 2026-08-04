@@ -1,110 +1,27 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
+import { attendanceService } from '../services/attendanceService';
 
 export const useAttendanceStore = defineStore('attendance', () => {
   const searchQuery = ref('');
   const departmentFilter = ref('All');
   const statusFilter = ref('All');
-
   const stats = ref({
-    present: 250,
-    presentTrend: '+1%',
-    lateLogin: 45,
-    lateTrend: '-1%',
-    uninformed: 15,
-    uninformedTrend: '-12%',
-    permission: 3,
-    permissionTrend: '+1%',
-    absent: 12,
-    absentTrend: '-19%'
+    present: 0,
+    presentTrend: '+0%',
+    lateLogin: 0,
+    lateTrend: '+0%',
+    uninformed: 0,
+    uninformedTrend: '+0%',
+    permission: 0,
+    permissionTrend: '+0%',
+    absent: 0,
+    absentTrend: '+0%'
   });
-
-  const logs = ref([
-    {
-      id: 1,
-      empId: 'EMP-001',
-      employeeName: 'Anthony Lewis',
-      department: 'UI/UX Team',
-      avatar: '/assets/img/profiles/avatar-02.jpg',
-      status: 'Present',
-      checkIn: '09:00 AM',
-      checkOut: '06:45 PM',
-      breakTime: '30 Min',
-      lateTime: '32 Min',
-      productionHours: '8.55 Hrs',
-      isOvertime: false
-    },
-    {
-      id: 2,
-      empId: 'EMP-002',
-      employeeName: 'Brian Villalobos',
-      department: 'Development',
-      avatar: '/assets/img/profiles/avatar-03.jpg',
-      status: 'Present',
-      checkIn: '09:00 AM',
-      checkOut: '06:12 PM',
-      breakTime: '20 Min',
-      lateTime: '20 Min',
-      productionHours: '7.54 Hrs',
-      isOvertime: false
-    },
-    {
-      id: 3,
-      empId: 'EMP-003',
-      employeeName: 'Harvey Smith',
-      department: 'HR',
-      avatar: '/assets/img/profiles/avatar-04.jpg',
-      status: 'Present',
-      checkIn: '09:00 AM',
-      checkOut: '06:13 PM',
-      breakTime: '50 Min',
-      lateTime: '23 Min',
-      productionHours: '8.45 Hrs',
-      isOvertime: false
-    },
-    {
-      id: 4,
-      empId: 'EMP-004',
-      employeeName: 'Stephan Peralt',
-      department: 'Management',
-      avatar: '/assets/img/profiles/avatar-05.jpg',
-      status: 'Present',
-      checkIn: '09:00 AM',
-      checkOut: '06:23 PM',
-      breakTime: '41 Min',
-      lateTime: '50 Min',
-      productionHours: '8.35 Hrs',
-      isOvertime: false
-    },
-    {
-      id: 5,
-      empId: 'EMP-005',
-      employeeName: 'Doglas Martini',
-      department: 'Development',
-      avatar: '/assets/img/profiles/avatar-06.jpg',
-      status: 'Present',
-      checkIn: '09:00 AM',
-      checkOut: '06:43 PM',
-      breakTime: '23 Min',
-      lateTime: '10 Min',
-      productionHours: '8.22 Hrs',
-      isOvertime: false
-    },
-    {
-      id: 6,
-      empId: 'EMP-006',
-      employeeName: 'Linda Ray',
-      department: 'UI/UX Team',
-      avatar: '/assets/img/profiles/avatar-07.jpg',
-      status: 'Absent',
-      checkIn: '-',
-      checkOut: '-',
-      breakTime: '-',
-      lateTime: '-',
-      productionHours: '0.00 Hrs',
-      isOvertime: false
-    }
-  ]);
+  const logs = ref([]);
+  const isLoading = ref(false);
+  const error = ref(null);
+  const loaded = ref(false);
 
   const filteredLogs = computed(() => {
     return logs.value.filter(log => {
@@ -119,12 +36,40 @@ export const useAttendanceStore = defineStore('attendance', () => {
     });
   });
 
-  function updateLog(id, updatedFields) {
-    const idx = logs.value.findIndex(l => l.id === id);
-    if (idx !== -1) {
-      logs.value[idx] = { ...logs.value[idx], ...updatedFields };
+  async function fetchAll() {
+    if (loaded.value) return;
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const data = await attendanceService.getAll();
+      stats.value = data.stats;
+      logs.value = data.logs;
+      loaded.value = true;
+    } catch (err) {
+      error.value = err.message || 'Failed to load attendance data';
+      console.error('[AttendanceStore] fetch failed:', err);
+    } finally {
+      isLoading.value = false;
     }
   }
+
+  async function updateLog(id, updatedFields) {
+    try {
+      const updated = await attendanceService.updateLog(id, updatedFields);
+      const idx = logs.value.findIndex(l => l.id === id);
+      if (idx !== -1) {
+        logs.value[idx] = updated;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to update attendance log';
+      throw err;
+    }
+  }
+
+  onBeforeMount(() => {
+    fetchAll();
+  });
 
   return {
     searchQuery,
@@ -132,7 +77,10 @@ export const useAttendanceStore = defineStore('attendance', () => {
     statusFilter,
     stats,
     logs,
+    isLoading,
+    error,
     filteredLogs,
+    fetchAll,
     updateLog
   };
 });

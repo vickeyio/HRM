@@ -232,7 +232,15 @@
       </div>
 
       <!-- List View -->
-      <div v-if="viewMode === 'list'" class="card-body p-0">
+      <div v-if="employeeStore.isLoading" class="card-body p-0 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading employees...</p>
+      </div>
+      <div v-else-if="employeeStore.error" class="card-body p-0 text-center py-5">
+        <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
+        <p class="text-muted mb-0">{{ employeeStore.error }}</p>
+      </div>
+      <div v-else-if="viewMode === 'list'" class="card-body p-0">
         <div class="custom-datatable-filter table-responsive">
           <table class="table datatable">
             <thead class="thead-light">
@@ -428,22 +436,29 @@ function openEditModal(emp) {
   isModalOpen.value = true;
 }
 
-function handleSaveEmployee(formData) {
-  if (selectedEmployee.value && selectedEmployee.value.id) {
-    employeeStore.updateEmployee(selectedEmployee.value.id, formData);
-  } else {
-    employeeStore.addEmployee(formData);
+async function handleSaveEmployee(formData) {
+  try {
+    if (selectedEmployee.value && selectedEmployee.value.id) {
+      await employeeStore.updateEmployee(selectedEmployee.value.id, formData);
+      if (selectedEmployee.value.id) {
+        Object.assign(selectedEmployee.value, employeeStore.employees.find(e => e.id === selectedEmployee.value.id) || {});
+      }
+    } else {
+      await employeeStore.addEmployee(formData);
+    }
+  } catch (err) {
+    console.error('Failed to save employee:', err);
   }
 }
 
 function confirmDelete(id) {
   if (confirm('Are you sure you want to remove this employee?')) {
-    employeeStore.deleteEmployee(id);
+    employeeStore.deleteEmployee(id).catch(err => console.error('Failed to delete employee:', err));
   }
 }
 
 function changeDepartment(emp, dept) {
-  employeeStore.updateEmployee(emp.id, { department: dept });
+  employeeStore.updateEmployee(emp.id, { department: dept }).catch(err => console.error('Failed to update employee:', err));
 }
 
 function exportData(format) {

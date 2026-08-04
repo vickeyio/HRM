@@ -157,7 +157,7 @@
             <div class="dropdown profile-dropdown">
               <a href="javascript:void(0);" class="dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
                 <span class="avatar avatar-md online">
-                  <img src="/assets/img/profiles/avatar-12.jpg" alt="Img" class="img-fluid rounded-circle" />
+                  <img :src="authStore.userAvatar" alt="Img" class="img-fluid rounded-circle" />
                 </span>
               </a>
               <div class="dropdown-menu shadow-none">
@@ -165,11 +165,12 @@
                   <div class="card-header">
                     <div class="d-flex align-items-center">
                       <span class="avatar avatar-lg me-2 avatar-rounded">
-                        <img src="/assets/img/profiles/avatar-12.jpg" alt="img" />
+                        <img :src="authStore.userAvatar" alt="img" />
                       </span>
                       <div>
-                        <h5 class="mb-0">Adrian Montero</h5>
-                        <p class="fs-12 fw-medium mb-0">adrian@smarthr.co.in</p>
+                        <h5 class="mb-0">{{ authStore.userName }}</h5>
+                        <p class="fs-12 fw-medium mb-0 text-muted">{{ authStore.userEmail }}</p>
+                        <span class="badge bg-primary-subtle text-primary badge-xs mt-1">{{ authStore.userRole }}</span>
                       </div>
                     </div>
                   </div>
@@ -185,7 +186,7 @@
                     </router-link>
                   </div>
                   <div class="card-footer">
-                    <a class="dropdown-item d-inline-flex align-items-center p-0 py-2 text-danger" href="javascript:void(0);">
+                    <a class="dropdown-item d-inline-flex align-items-center p-0 py-2 text-danger" href="javascript:void(0);" @click="handleLogout">
                       <i class="ti ti-login me-2"></i>Logout
                     </a>
                   </div>
@@ -204,7 +205,7 @@
         <div class="dropdown-menu dropdown-menu-end">
           <router-link class="dropdown-item" to="/profile">My Profile</router-link>
           <router-link class="dropdown-item" to="/settings">Settings</router-link>
-          <a class="dropdown-item text-danger" href="javascript:void(0);">Logout</a>
+          <a class="dropdown-item text-danger" href="javascript:void(0);" @click="handleLogout">Logout</a>
         </div>
       </div>
     </div>
@@ -212,9 +213,18 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
 import { useSidebarStore } from '../../stores/sidebar';
+import { useAuthStore } from '../../stores/auth';
 
+const router = useRouter();
 const sidebarStore = useSidebarStore();
+const authStore = useAuthStore();
+
+function handleLogout() {
+  authStore.logout();
+  router.push('/login');
+}
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {

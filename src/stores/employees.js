@@ -1,16 +1,14 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
+import { employeeService } from '../services/employeeService';
 
 export const useEmployeeStore = defineStore('employees', () => {
   const searchQuery = ref('');
   const statusFilter = ref('All');
-
-  const employees = ref([
-    { id: 1, empId: 'EMP-001', name: 'Anthony Lewis', role: 'UI/UX Designer', department: 'Designing', email: 'anthony@smarthr.co.in', joiningDate: '2024-01-15', status: 'Active', avatar: '/assets/img/profiles/avatar-02.jpg' },
-    { id: 2, empId: 'EMP-002', name: 'Brian Villalobos', role: 'PHP Developer', department: 'Development', email: 'brian@smarthr.co.in', joiningDate: '2023-11-20', status: 'Active', avatar: '/assets/img/profiles/avatar-03.jpg' },
-    { id: 3, empId: 'EMP-003', name: 'Stephaney Harvey', role: 'HR Manager', department: 'Human Resources', email: 'stephaney@smarthr.co.in', joiningDate: '2022-05-10', status: 'Active', avatar: '/assets/img/profiles/avatar-04.jpg' },
-    { id: 4, empId: 'EMP-004', name: 'Doglas Meier', role: 'DevOps Engineer', department: 'IT Systems', email: 'doglas@smarthr.co.in', joiningDate: '2024-03-01', status: 'Inactive', avatar: '/assets/img/profiles/avatar-05.jpg' }
-  ]);
+  const employees = ref([]);
+  const isLoading = ref(false);
+  const error = ref(null);
+  const loaded = ref(false);
 
   const filteredEmployees = computed(() => {
     return employees.value.filter(emp => {
@@ -26,46 +24,81 @@ export const useEmployeeStore = defineStore('employees', () => {
     });
   });
 
-  function addEmployee(employeeData) {
-    const newId = Date.now();
-    const formattedCount = String(employees.value.length + 1).padStart(3, '0');
-    const newEmployee = {
-      id: newId,
-      empId: `EMP-${formattedCount}`,
-      name: employeeData.name,
-      role: employeeData.role || 'Team Member',
-      department: employeeData.department || 'General',
-      email: employeeData.email || 'employee@smarthr.co.in',
-      joiningDate: employeeData.joiningDate || new Date().toISOString().split('T')[0],
-      status: employeeData.status || 'Active',
-      avatar: '/assets/img/profiles/avatar-02.jpg'
-    };
-    employees.value.unshift(newEmployee);
-  }
-
-  function updateEmployee(id, updatedData) {
-    const index = employees.value.findIndex(e => e.id === id);
-    if (index !== -1) {
-      employees.value[index] = { ...employees.value[index], ...updatedData };
+  async function fetchAll() {
+    if (loaded.value) return;
+    isLoading.value = true;
+    error.value = null;
+    try {
+      employees.value = await employeeService.getAll();
+      loaded.value = true;
+    } catch (err) {
+      error.value = err.message || 'Failed to load employees';
+      console.error('[EmployeeStore] fetch failed:', err);
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  function toggleStatus(id) {
-    const emp = employees.value.find(e => e.id === id);
-    if (emp) {
-      emp.status = emp.status === 'Active' ? 'Inactive' : 'Active';
+  async function addEmployee(employeeData) {
+    try {
+      const newEmployee = await employeeService.create(employeeData);
+      employees.value.unshift(newEmployee);
+      return newEmployee;
+    } catch (err) {
+      error.value = err.message || 'Failed to add employee';
+      throw err;
     }
   }
 
-  function deleteEmployee(id) {
-    employees.value = employees.value.filter(e => e.id !== id);
+  async function updateEmployee(id, updatedData) {
+    try {
+      const updated = await employeeService.update(id, updatedData);
+      const index = employees.value.findIndex(e => e.id === id);
+      if (index !== -1) {
+        employees.value[index] = updated;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to update employee';
+      throw err;
+    }
   }
+
+  async function toggleStatus(id) {
+    try {
+      const updated = await employeeService.toggleStatus(id);
+      const emp = employees.value.find(e => e.id === id);
+      if (emp) {
+        emp.status = updated.status;
+      }
+      return updated;
+    } catch (err) {
+      error.value = err.message || 'Failed to toggle status';
+    }
+  }
+
+  async function deleteEmployee(id) {
+    try {
+      await employeeService.delete(id);
+      employees.value = employees.value.filter(e => e.id !== id);
+    } catch (err) {
+      error.value = err.message || 'Failed to delete employee';
+      throw err;
+    }
+  }
+
+  onBeforeMount(() => {
+    fetchAll();
+  });
 
   return {
     employees,
     searchQuery,
     statusFilter,
+    isLoading,
+    error,
     filteredEmployees,
+    fetchAll,
     addEmployee,
     updateEmployee,
     toggleStatus,
