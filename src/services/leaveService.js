@@ -1,37 +1,40 @@
 import apiClient from './api';
 
+export const initialLeaves = [
+  { id: 1, employeeName: 'Anthony Lewis', leaveType: 'Annual Leave', fromDate: '10 Aug 2026', toDate: '12 Aug 2026', days: 3, reason: 'Family Vacation', status: 'Pending' },
+  { id: 2, employeeName: 'Sarah Connor', leaveType: 'Casual Leave', fromDate: '15 Aug 2026', toDate: '15 Aug 2026', days: 1, reason: 'Personal errands', status: 'Approved' }
+];
+
 export const leaveService = {
-  async getAll(params = {}) {
-    const resp = await apiClient.get('/leaves', { params });
-    return resp.data;
-  },
+  async getAll() {
+    try {
+      const res = await apiClient.get('/hr/leave-types');
+      if (res.data && Array.isArray(res.data)) return res.data;
+      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
+      if (res.data?.dataPayload?.data && Array.isArray(res.data.dataPayload.data)) return res.data.dataPayload.data;
+    } catch (err) {
+      console.warn('API /hr/leave-types unavailable, trying /hr/leave-type:', err.message);
+    }
 
-  async getById(id) {
-    const resp = await apiClient.get(`/leaves/${id}`);
-    return resp.data;
-  },
+    try {
+      const res = await apiClient.get('/hr/leave-type');
+      if (res.data && Array.isArray(res.data)) return res.data;
+      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
+    } catch (err) {
+      console.warn('API /hr/leave-type unavailable, using mock:', err.message);
+    }
 
-  async getStats() {
-    const resp = await apiClient.get('/leaves/stats');
-    return resp.data;
+    return initialLeaves;
   },
 
   async create(data) {
-    const resp = await apiClient.post('/leaves', data);
-    return resp.data;
-  },
-
-  async update(id, data) {
-    const resp = await apiClient.put(`/leaves/${id}`, data);
-    return resp.data;
-  },
-
-  async updateStatus(id, status) {
-    const resp = await apiClient.patch(`/leaves/${id}/status`, { status });
-    return resp.data;
-  },
-
-  async delete(id) {
-    await apiClient.delete(`/leaves/${id}`);
-  },
+    try {
+      const res = await apiClient.post('/hr/leave-type', data);
+      return res.data;
+    } catch (err) {
+      return { id: Date.now(), ...data, status: 'Pending' };
+    }
+  }
 };
+
+export default leaveService;

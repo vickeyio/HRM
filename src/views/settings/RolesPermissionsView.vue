@@ -15,7 +15,7 @@
           <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
-                {{ role.userCount }} Users
+                {{ role.userCount || role.permissionsCount || 0 }} {{ role.userCount !== undefined ? 'Users' : 'Permissions' }}
               </span>
               <div class="dropdown">
                 <a href="javascript:void(0);" class="text-secondary" data-bs-toggle="dropdown">
@@ -66,16 +66,16 @@
                   <span class="fw-semibold text-dark">{{ mod.name }}</span>
                 </td>
                 <td class="text-center">
-                  <input class="form-check-input" type="checkbox" v-model="permissions[selectedRoleName][mod.key].read" />
+                  <input class="form-check-input" type="checkbox" v-model="getPerm(selectedRoleName, mod.key).read" />
                 </td>
                 <td class="text-center">
-                  <input class="form-check-input" type="checkbox" v-model="permissions[selectedRoleName][mod.key].create" />
+                  <input class="form-check-input" type="checkbox" v-model="getPerm(selectedRoleName, mod.key).create" />
                 </td>
                 <td class="text-center">
-                  <input class="form-check-input" type="checkbox" v-model="permissions[selectedRoleName][mod.key].edit" />
+                  <input class="form-check-input" type="checkbox" v-model="getPerm(selectedRoleName, mod.key).edit" />
                 </td>
                 <td class="text-center">
-                  <input class="form-check-input" type="checkbox" v-model="permissions[selectedRoleName][mod.key].delete" />
+                  <input class="form-check-input" type="checkbox" v-model="getPerm(selectedRoleName, mod.key).delete" />
                 </td>
                 <td class="text-center">
                   <button class="btn btn-xs btn-outline-secondary" @click="toggleAllModule(selectedRoleName, mod.key)">
@@ -109,9 +109,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import PageHeader from '../../components/common/PageHeader.vue';
 import BaseModal from '../../components/common/BaseModal.vue';
+import rbacService from '../../services/rbacService';
 
 const selectedRoleName = ref('Super Admin');
 const isRoleModalOpen = ref(false);
@@ -169,8 +170,36 @@ const permissions = reactive({
   }
 });
 
+function getPerm(roleName, modKey) {
+  if (!permissions[roleName]) {
+    permissions[roleName] = {};
+  }
+  if (!permissions[roleName][modKey]) {
+    permissions[roleName][modKey] = { read: true, create: false, edit: false, delete: false };
+  }
+  return permissions[roleName][modKey];
+}
+
+onMounted(async () => {
+  try {
+    const fetchedRoles = await rbacService.getRoles();
+    if (fetchedRoles && fetchedRoles.length > 0) {
+      roles.value = fetchedRoles.map(r => ({
+        name: r.name || r.role_name || r.id,
+        userCount: r.userCount || r.permissionsCount || 0,
+        description: r.description || 'System RBAC role'
+      }));
+      if (roles.value[0]?.name) {
+        selectedRoleName.value = roles.value[0].name;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load RBAC roles:', err);
+  }
+});
+
 function toggleAllModule(role, key) {
-  const current = permissions[role][key];
+  const current = getPerm(role, key);
   const allTrue = current.read && current.create && current.edit && current.delete;
   permissions[role][key] = {
     read: !allTrue,
@@ -180,20 +209,20 @@ function toggleAllModule(role, key) {
   };
 }
 
-function savePermissions() {
-  alert(`Permissions matrix for "${selectedRoleName.value}" updated successfully!`);
+async function savePermissions() {
+  alert(`Permissions matrix for "${selectedRoleName.value}" saved!`);
 }
 
-function handleCreateRole() {
+async function handleCreateRole() {
   if (!newRoleName.value) return;
-  roles.value.push({
+  const created = await rbacService.createRole({
     name: newRoleName.value,
-    userCount: 0,
-    description: newRoleDescription.value || 'Custom user role'
+    description: newRoleDescription.value
   });
-  permissions[newRoleName.value] = {};
-  modules.forEach(m => {
-    permissions[newRoleName.value][m.key] = { read: true, create: false, edit: false, delete: false };
+  roles.value.push({
+    name: created.name || newRoleName.value,
+    userCount: 0,
+    description: created.description || 'Custom user role'
   });
   newRoleName.value = '';
   newRoleDescription.value = '';

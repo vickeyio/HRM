@@ -1,11 +1,8 @@
-import { config } from '../config/env';
-
 export { default as apiClient } from './api';
-export { employeeService } from './employeeService';
-export { departmentService } from './departmentService';
-export { designationService } from './designationService';
-export { holidayService } from './holidayService';
-export { leaveService } from './leaveService';
-export { attendanceService } from './attendanceService';
-
-export { config };
+export { default as employeeService } from './employeeService';
+export { default as departmentService } from './departmentService';
+export { default as designationService } from './designationService';
+export { default as leaveService } from './leaveService';
+export { default as holidayService } from './holidayService';
+export { default as attendanceService } from './attendanceService';
+export { default as rbacService } from './rbacService';

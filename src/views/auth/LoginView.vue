@@ -48,19 +48,19 @@
           {{ error }}
         </div>
 
-        <!-- Email Field -->
+        <!-- Username / Email Field -->
         <div class="mb-3">
-          <label class="form-label text-dark fw-medium fs-14 mb-1">Email Address</label>
+          <label class="form-label text-dark fw-medium fs-14 mb-1">Username or Email Address</label>
           <div class="input-group">
             <input
-              type="email"
-              v-model="email"
+              type="text"
+              v-model="username"
               class="form-control border-end-0 py-2"
-              placeholder="admin@smarthr.co.in"
+              placeholder="admin or admin@smarthr.co.in"
               required
             />
             <span class="input-group-text border-start-0 bg-white text-muted">
-              <i class="ti ti-mail"></i>
+              <i class="ti ti-user"></i>
             </span>
           </div>
         </div>
@@ -176,25 +176,26 @@ import { useAuthStore } from '../../stores/auth';
 const router = useRouter();
 const authStore = useAuthStore();
 
-const email = ref('adrian@smarthr.co.in');
-const password = ref('123456');
+const username = ref('admin');
+const password = ref('@dmiN123');
 const selectedRole = ref('Admin');
 const rememberMe = ref(true);
 const showPassword = ref(false);
 const loading = ref(false);
 const error = ref('');
 
-function selectRole(role, defaultEmail) {
+function selectRole(role, defaultUser) {
   selectedRole.value = role;
-  email.value = defaultEmail;
+  username.value = defaultUser;
 }
 
 async function handleLogin() {
   loading.value = true;
   error.value = '';
   try {
-    authStore.login({
-      email: email.value,
+    await authStore.login({
+      username: username.value,
+      email: username.value,
       password: password.value,
       role: selectedRole.value
     });
