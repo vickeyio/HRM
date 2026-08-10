@@ -1,89 +1,134 @@
-import apiClient from './api';
-import { initialEmployees } from './mock/data/employees';
+import { useApi } from '../composables/useApi';
+import { unwrapList, unwrapRecord, mapStatus } from '../utils/apiResponseHelper';
 
+/**
+ * Employee Service — aligned with Afya365 HR backend
+ *
+ * Backend schema (Employee):
+ *   employee_id, facility_id, employee_number, department_id, job_title_id,
+ *   job_group_id, employment_type_id, employment_status_id, employer_type_id,
+ *   employment_date, termination_date, termination_reason, notes
+ *
+ * Nested profile (Profile):
+ *   title, first_name, middle_name, last_name, gender, date_of_birth,
+ *   physical_address, postal_address, national_id, passport_number,
+ *   tax_pin, email_address, mobile_number, avatar_url
+ *
+ * Endpoints:
+ *   GET    /hr/employees            — paginated list
+ *   GET    /hr/employee/search      — search
+ *   GET    /hr/employee/meta        — form metadata
+ *   POST   /hr/employee             — create
+ *   GET    /hr/employee/{id}        — view
+ *   PUT    /hr/employee/{id}        — update
+ *   DELETE /hr/employee/{id}        — soft delete
+ *   PATCH  /hr/employee/{id}        — restore
+ */
 export const employeeService = {
   async getAll() {
-    try {
-      // Primary plural endpoint: /hr/employees
-      const res = await apiClient.get('/hr/employees');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-      if (res.data?.dataPayload?.data && Array.isArray(res.data.dataPayload.data)) return res.data.dataPayload.data;
-    } catch (err) {
-      console.warn('API /hr/employees unavailable, trying /hr/employee fallback:', err.message);
-    }
+    const api = useApi('/hr/employees', { autoFetch: false, enableCache: true });
+    await api.request();
+    const records = unwrapList(api.data.value);
+    return records.map(normalizeEmployee);
+  },
 
-    try {
-      const res = await apiClient.get('/hr/employee');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-    } catch (err) {
-      console.warn('API /hr/employee fallback unavailable, using mock data:', err.message);
-    }
-
-    return initialEmployees;
+  async search(query) {
+    const api = useApi('/hr/employee/search', { autoFetch: false });
+    await api.request(null, { q: query });
+    const records = unwrapList(api.data.value);
+    return records.map(normalizeEmployee);
   },
 
   async getById(id) {
-    try {
-      const res = await apiClient.get(`/hr/employees/${id}`);
-      return res.data;
-    } catch (err) {
-      try {
-        const res = await apiClient.get(`/hr/employee/${id}`);
-        return res.data;
-      } catch (e) {
-        console.warn(`API /hr/employee/${id} unavailable:`, e.message);
-        return initialEmployees.find(e => e.id === Number(id));
-      }
-    }
+    const api = useApi(`/hr/employee/${id}`, { autoFetch: false });
+    await api.request();
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeEmployee(record) : null;
   },
 
-  async create(formData) {
-    // Transform UI form data to backend EmployeeDraftCreateRequest schema
-    const payload = {
-      profile: {
-        first_name: formData.firstName || (formData.name ? formData.name.split(' ')[0] : 'Employee'),
-        last_name: formData.lastName || (formData.name ? formData.name.split(' ').slice(1).join(' ') : ''),
-        email_address: formData.email || 'employee@company.com',
-        mobile_number: formData.phone || '254700000000',
-        avatar_url: formData.avatar || '/assets/img/profiles/avatar-02.jpg'
-      },
-      employee: {
-        department_id: Number(formData.department_id) || 1,
-        job_title_id: Number(formData.job_title_id) || 1,
-        hire_date: formData.joiningDate || new Date().toISOString().split('T')[0]
-      }
-    };
+  async getMeta() {
+    const api = useApi('/hr/employee/meta', { autoFetch: false, enableCache: true });
+    await api.request();
+    return unwrapRecord(api.data.value);
+  },
 
-    try {
-      const res = await apiClient.post('/hr/employee', payload);
-      return res.data?.dataPayload?.data || res.data?.data || res.data;
-    } catch (err) {
-      console.warn('API create employee failed, falling back to local creation:', err.message);
-      return { id: Date.now(), ...formData, status: 'Active' };
-    }
+  async create(data) {
+    const api = useApi('/hr/employee', { method: 'POST', autoFetch: false });
+    await api.request(data);
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeEmployee(record) : data;
   },
 
   async update(id, data) {
-    try {
-      const res = await apiClient.put(`/hr/employee/${id}`, data);
-      return res.data;
-    } catch (err) {
-      console.warn(`API update employee ${id} failed:`, err.message);
-      return { id, ...data };
-    }
+    const api = useApi(`/hr/employee/${id}`, { method: 'PUT', autoFetch: false });
+    await api.request(data);
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeEmployee(record) : { ...data, employee_id: id };
   },
 
   async delete(id) {
-    try {
-      await apiClient.delete(`/hr/employee/${id}`);
-      return true;
-    } catch (err) {
-      console.warn(`API delete employee ${id} failed:`, err.message);
-      return true;
-    }
+    const api = useApi(`/hr/employee/${id}`, { method: 'DELETE', autoFetch: false });
+    await api.request();
+    return true;
+  },
+
+  async restore(id) {
+    const api = useApi(`/hr/employee/${id}`, { method: 'PATCH', autoFetch: false });
+    await api.request();
+    return true;
   }
 };
+
+/**
+ * Normalize backend employee record to frontend-friendly shape.
+ * Backend may return flat or nested profile fields depending on the endpoint.
+ */
+function normalizeEmployee(raw) {
+  const profile = raw.profile || {};
+
+  // Build a full display name from profile fields or fallback
+  const firstName = profile.first_name || raw.first_name || '';
+  const middleName = profile.middle_name || raw.middle_name || '';
+  const lastName = profile.last_name || raw.last_name || '';
+  const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || raw.name || '';
+
+  return {
+    employee_id: raw.employee_id,
+    employee_number: raw.employee_number || '',
+    name: fullName,
+    first_name: firstName,
+    middle_name: middleName,
+    last_name: lastName,
+    email: profile.email_address || raw.email_address || raw.email || '',
+    phone: profile.mobile_number || raw.mobile_number || raw.phone || '',
+    gender: profile.gender || raw.gender || '',
+    date_of_birth: profile.date_of_birth || raw.date_of_birth || '',
+    national_id: profile.national_id || raw.national_id || '',
+    avatar: profile.avatar_url || raw.avatar_url || raw.avatar || '/assets/img/profiles/avatar-12.jpg',
+
+    // Relationships (IDs)
+    department_id: raw.department_id || null,
+    job_title_id: raw.job_title_id || null,
+    job_group_id: raw.job_group_id || null,
+    employment_type_id: raw.employment_type_id || null,
+    employment_status_id: raw.employment_status_id || null,
+    employer_type_id: raw.employer_type_id || null,
+
+    // Expanded relationship names (if backend returns them)
+    department: raw.department_name || raw.department || '',
+    role: raw.job_title_name || raw.title_name || raw.role || '',
+    employment_type: raw.employment_type_name || '',
+
+    // Dates
+    employment_date: raw.employment_date || '',
+    termination_date: raw.termination_date || '',
+
+    // Status
+    status: mapStatus(raw.employment_status_id ?? 1, raw.is_deleted),
+    is_deleted: raw.is_deleted || false,
+
+    notes: raw.notes || '',
+  };
+}
 
 export default employeeService;

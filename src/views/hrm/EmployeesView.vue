@@ -267,13 +267,13 @@
                   No employees matching criteria.
                 </td>
               </tr>
-              <tr v-for="emp in displayedEmployees" :key="emp.id">
+              <tr v-for="emp in displayedEmployees" :key="emp.employee_id">
                 <td>
                   <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="emp.id" v-model="selectedEmployees">
+                    <input class="form-check-input" type="checkbox" :value="emp.employee_id" v-model="selectedEmployees">
                   </div>
                 </td>
-                <td><a href="javascript:void(0);" class="text-primary fw-medium" @click="openEditModal(emp)">{{ emp.empId }}</a></td>
+                <td><a href="javascript:void(0);" class="text-primary fw-medium" @click="openEditModal(emp)">{{ emp.employee_number }}</a></td>
                 <td>
                   <div class="d-flex align-items-center">
                     <a href="javascript:void(0);" class="avatar avatar-md me-2">
@@ -300,16 +300,16 @@
                     </ul>
                   </div>
                 </td>
-                <td>{{ emp.joiningDate }}</td>
+                <td>{{ emp.employment_date }}</td>
                 <td>
-                  <span :class="['badge d-inline-flex align-items-center badge-xs', emp.status === 'Active' ? 'badge-success' : 'badge-danger']" style="cursor: pointer;" @click="employeeStore.toggleStatus(emp.id)">
+                  <span :class="['badge d-inline-flex align-items-center badge-xs', emp.status === 'Active' ? 'badge-success' : 'badge-danger']">
                     <i class="ti ti-point-filled me-1"></i>{{ emp.status }}
                   </span>
                 </td>
                 <td>
                   <div class="action-icon d-inline-flex">
                     <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(emp)" title="Edit Employee"><i class="ti ti-edit"></i></a>
-                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(emp.id)" title="Delete Employee"><i class="ti ti-trash"></i></a>
+                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(emp.employee_id)" title="Delete Employee"><i class="ti ti-trash"></i></a>
                   </div>
                 </td>
               </tr>
@@ -325,7 +325,7 @@
             <i class="ti ti-search-off fs-1 d-block mb-2 text-secondary"></i>
             No employees matching criteria.
           </div>
-          <div v-for="emp in displayedEmployees" :key="emp.id" class="col-xl-3 col-lg-4 col-md-6 mb-4">
+          <div v-for="emp in displayedEmployees" :key="emp.employee_id" class="col-xl-3 col-lg-4 col-md-6 mb-4">
             <div class="card border flex-fill text-center p-3">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <span :class="['badge badge-xs d-inline-flex align-items-center', emp.status === 'Active' ? 'badge-success' : 'badge-danger']">
@@ -335,8 +335,7 @@
                   <a href="javascript:void(0);" class="text-muted" data-bs-toggle="dropdown"><i class="ti ti-dots-vertical"></i></a>
                   <ul class="dropdown-menu dropdown-menu-end p-2">
                     <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="openEditModal(emp)"><i class="ti ti-edit me-1"></i>Edit</a></li>
-                    <li><a href="javascript:void(0);" class="dropdown-item rounded-1" @click="employeeStore.toggleStatus(emp.id)"><i class="ti ti-refresh me-1"></i>Toggle Status</a></li>
-                    <li><a href="javascript:void(0);" class="dropdown-item rounded-1 text-danger" @click="confirmDelete(emp.id)"><i class="ti ti-trash me-1"></i>Delete</a></li>
+                    <li><a href="javascript:void(0);" class="dropdown-item rounded-1 text-danger" @click="confirmDelete(emp.employee_id)"><i class="ti ti-trash me-1"></i>Delete</a></li>
                   </ul>
                 </div>
               </div>
@@ -346,12 +345,12 @@
               <h5 class="mb-1"><a href="javascript:void(0);" class="text-dark" @click="openEditModal(emp)">{{ emp.name }}</a></h5>
               <p class="fs-13 text-muted mb-2">{{ emp.role || emp.department }}</p>
               <div class="bg-light rounded p-2 mb-3">
-                <span class="fs-12 text-dark d-block">ID: <strong>{{ emp.empId }}</strong></span>
+                <span class="fs-12 text-dark d-block">ID: <strong>{{ emp.employee_number }}</strong></span>
                 <span class="fs-12 text-muted d-block">{{ emp.email }}</span>
               </div>
               <div class="d-flex align-items-center justify-content-center gap-2">
                 <button class="btn btn-light btn-sm" @click="openEditModal(emp)"><i class="ti ti-edit me-1"></i>Edit</button>
-                <button class="btn btn-outline-danger btn-sm" @click="confirmDelete(emp.id)"><i class="ti ti-trash"></i></button>
+                <button class="btn btn-outline-danger btn-sm" @click="confirmDelete(emp.employee_id)"><i class="ti ti-trash"></i></button>
               </div>
             </div>
           </div>
@@ -403,7 +402,7 @@ const displayedEmployees = computed(() => {
   } else if (sortBy.value === 'desc') {
     result.sort((a, b) => b.name.localeCompare(a.name));
   } else {
-    result.sort((a, b) => b.id - a.id);
+    result.sort((a, b) => (b.employee_id || 0) - (a.employee_id || 0));
   }
 
   return result;
@@ -415,7 +414,7 @@ const isAllSelected = computed(() => {
 
 function toggleSelectAll(e) {
   if (e.target.checked) {
-    selectedEmployees.value = displayedEmployees.value.map(emp => emp.id);
+    selectedEmployees.value = displayedEmployees.value.map(emp => emp.employee_id);
   } else {
     selectedEmployees.value = [];
   }
@@ -438,10 +437,10 @@ function openEditModal(emp) {
 
 async function handleSaveEmployee(formData) {
   try {
-    if (selectedEmployee.value && selectedEmployee.value.id) {
-      await employeeStore.updateEmployee(selectedEmployee.value.id, formData);
-      if (selectedEmployee.value.id) {
-        Object.assign(selectedEmployee.value, employeeStore.employees.find(e => e.id === selectedEmployee.value.id) || {});
+    if (selectedEmployee.value && selectedEmployee.value.employee_id) {
+      await employeeStore.updateEmployee(selectedEmployee.value.employee_id, formData);
+      if (selectedEmployee.value.employee_id) {
+        Object.assign(selectedEmployee.value, employeeStore.employees.find(e => e.employee_id === selectedEmployee.value.employee_id) || {});
       }
     } else {
       await employeeStore.addEmployee(formData);
@@ -458,7 +457,7 @@ function confirmDelete(id) {
 }
 
 function changeDepartment(emp, dept) {
-  employeeStore.updateEmployee(emp.id, { department: dept }).catch(err => console.error('Failed to update employee:', err));
+  employeeStore.updateEmployee(emp.employee_id, { department_id: dept }).catch(err => console.error('Failed to update employee:', err));
 }
 
 function exportData(format) {

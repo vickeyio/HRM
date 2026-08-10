@@ -38,37 +38,39 @@
                   </div>
                 </th>
                 <th>Department</th>
-                <th>No of Employees</th>
+                <th>Code</th>
+                <th>Description</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="displayedItems.length === 0">
-                <td colspan="5" class="text-center py-5 text-muted">
+                <td colspan="6" class="text-center py-5 text-muted">
                   <i class="ti ti-search-off fs-1 d-block mb-2 text-secondary"></i>
                   No departments found matching search criteria.
                 </td>
               </tr>
-              <tr v-for="dept in displayedItems" :key="dept.id">
+              <tr v-for="dept in displayedItems" :key="dept.department_id">
                 <td>
                   <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="dept.id" v-model="selectedIds">
+                    <input class="form-check-input" type="checkbox" :value="dept.department_id" v-model="selectedIds">
                   </div>
                 </td>
                 <td>
                   <h6 class="fw-medium mb-0"><a href="javascript:void(0);" class="text-dark" @click="openEditModal(dept)">{{ dept.name }}</a></h6>
                 </td>
-                <td>{{ String(dept.employeeCount).padStart(2, '0') }}</td>
+                <td><span class="badge badge-soft-secondary">{{ dept.code || '—' }}</span></td>
+                <td class="text-truncate" style="max-width: 250px;">{{ dept.description || '—' }}</td>
                 <td>
-                  <span :class="['badge d-inline-flex align-items-center badge-xs', dept.status === 'Active' ? 'badge-success' : 'badge-danger']" style="cursor: pointer;" @click="departmentStore.toggleStatus(dept.id)">
+                  <span :class="['badge d-inline-flex align-items-center badge-xs', dept.status === 'Active' ? 'badge-success' : 'badge-danger']">
                     <i class="ti ti-point-filled me-1"></i>{{ dept.status }}
                   </span>
                 </td>
                 <td>
                   <div class="action-icon d-inline-flex">
                     <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(dept)" title="Edit Department"><i class="ti ti-edit"></i></a>
-                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(dept.id)" title="Delete Department"><i class="ti ti-trash"></i></a>
+                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(dept.department_id)" title="Delete Department"><i class="ti ti-trash"></i></a>
                   </div>
                 </td>
               </tr>
@@ -108,7 +110,7 @@ const {
   isAllSelected,
   toggleSelectAll,
   exportData
-} = useCrudTable(toRef(departmentStore, 'filteredDepartments'), { searchFields: ['name'] });
+} = useCrudTable(toRef(departmentStore, 'filteredDepartments'), { searchFields: ['name', 'code'] });
 
 function openAddModal() {
   selectedDepartment.value = null;
@@ -122,11 +124,12 @@ function openEditModal(dept) {
 
 async function handleSaveDepartment(formData) {
   try {
-    if (selectedDepartment.value && selectedDepartment.value.id) {
-      await departmentStore.updateDepartment(selectedDepartment.value.id, formData);
+    if (selectedDepartment.value && selectedDepartment.value.department_id) {
+      await departmentStore.updateDepartment(selectedDepartment.value.department_id, formData);
     } else {
       await departmentStore.addDepartment(formData);
     }
+    isModalOpen.value = false;
   } catch (err) {
     console.error('Failed to save department:', err);
   }

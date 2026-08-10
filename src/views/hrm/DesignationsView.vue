@@ -17,23 +17,7 @@
         search-placeholder="Search designation..."
         v-model:status="designationStore.statusFilter"
         v-model:sort="sortBy"
-      >
-        <template #extra-filters>
-          <!-- Department Filter Dropdown -->
-          <div class="dropdown me-3">
-            <a href="javascript:void(0);" class="dropdown-toggle btn btn-white d-inline-flex align-items-center" data-bs-toggle="dropdown">
-              Department: {{ designationStore.departmentFilter }}
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end p-3">
-              <li v-for="dept in departmentOptions" :key="dept">
-                <a href="javascript:void(0);" class="dropdown-item rounded-1" @click="designationStore.departmentFilter = dept">
-                  {{ dept === 'All' ? 'All Departments' : dept }}
-                </a>
-              </li>
-            </ul>
-          </div>
-        </template>
-      </DataTableToolbar>
+      />
 
       <div v-if="designationStore.isLoading" class="card-body p-0 text-center py-5">
         <div class="spinner-border text-primary" role="status"></div>
@@ -54,8 +38,8 @@
                   </div>
                 </th>
                 <th>Designation</th>
+                <th>Code</th>
                 <th>Department</th>
-                <th>No of Employees</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -67,26 +51,26 @@
                   No designations found matching search criteria.
                 </td>
               </tr>
-              <tr v-for="des in displayedItems" :key="des.id">
+              <tr v-for="des in displayedItems" :key="des.job_title_id">
                 <td>
                   <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="des.id" v-model="selectedIds">
+                    <input class="form-check-input" type="checkbox" :value="des.job_title_id" v-model="selectedIds">
                   </div>
                 </td>
                 <td>
                   <h6 class="fw-medium fs-14 text-dark mb-0"><a href="javascript:void(0);" class="text-dark" @click="openEditModal(des)">{{ des.name }}</a></h6>
                 </td>
-                <td>{{ des.department }}</td>
-                <td>{{ String(des.employeeCount).padStart(2, '0') }}</td>
+                <td><span class="badge badge-soft-secondary">{{ des.title_code || '—' }}</span></td>
+                <td>{{ des.department || '—' }}</td>
                 <td>
-                  <span :class="['badge d-inline-flex align-items-center badge-xs', des.status === 'Active' ? 'badge-success' : 'badge-danger']" style="cursor: pointer;" @click="designationStore.toggleStatus(des.id)">
+                  <span :class="['badge d-inline-flex align-items-center badge-xs', des.status === 'Active' ? 'badge-success' : 'badge-danger']">
                     <i class="ti ti-point-filled me-1"></i>{{ des.status }}
                   </span>
                 </td>
                 <td>
                   <div class="action-icon d-inline-flex">
                     <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(des)" title="Edit Designation"><i class="ti ti-edit"></i></a>
-                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(des.id)" title="Delete Designation"><i class="ti ti-trash"></i></a>
+                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(des.job_title_id)" title="Delete Designation"><i class="ti ti-trash"></i></a>
                   </div>
                 </td>
               </tr>
@@ -119,16 +103,6 @@ const designationStore = useDesignationStore();
 const isModalOpen = ref(false);
 const selectedDesignation = ref(null);
 
-const departmentOptions = [
-  'All',
-  'Finance',
-  'Application Development',
-  'IT Management',
-  'Web Development',
-  'Sales',
-  'UI / UX'
-];
-
 const {
   sortBy,
   selectedIds,
@@ -136,7 +110,7 @@ const {
   isAllSelected,
   toggleSelectAll,
   exportData
-} = useCrudTable(toRef(designationStore, 'filteredDesignations'), { searchFields: ['name', 'department'] });
+} = useCrudTable(toRef(designationStore, 'filteredDesignations'), { searchFields: ['name', 'title_code'] });
 
 function openAddModal() {
   selectedDesignation.value = null;
@@ -150,11 +124,12 @@ function openEditModal(des) {
 
 async function handleSaveDesignation(formData) {
   try {
-    if (selectedDesignation.value && selectedDesignation.value.id) {
-      await designationStore.updateDesignation(selectedDesignation.value.id, formData);
+    if (selectedDesignation.value && selectedDesignation.value.job_title_id) {
+      await designationStore.updateDesignation(selectedDesignation.value.job_title_id, formData);
     } else {
       await designationStore.addDesignation(formData);
     }
+    isModalOpen.value = false;
   } catch (err) {
     console.error('Failed to save designation:', err);
   }

@@ -1,41 +1,105 @@
-import apiClient from './api';
+import { useApi } from '../composables/useApi';
+import { unwrapList, unwrapRecord, mapStatus } from '../utils/apiResponseHelper';
 
-export const initialHolidays = [
-  { id: 1, title: 'New Year Day', date: '01 Jan 2026', day: 'Thursday', description: 'Public Holiday' },
-  { id: 2, title: 'Labor Day', date: '01 May 2026', day: 'Friday', description: 'International Workers Day' },
-  { id: 3, title: 'Independence Day', date: '04 Jul 2026', day: 'Saturday', description: 'National Holiday' }
-];
-
+/**
+ * Holiday (PublicHoliday) Service — aligned with Afya365 HR backend
+ *
+ * Backend schema (PublicHoliday):
+ *   holiday_id, facility_id, holiday_name, holiday_date,
+ *   is_recurring, is_paid, double_pay_if_worked, description,
+ *   status, is_deleted, created_at, updated_at, created_by, updated_by
+ *
+ * Endpoints:
+ *   GET    /hr/public-holidays          — paginated list
+ *   GET    /hr/public-holiday/search    — search
+ *   POST   /hr/public-holiday           — create
+ *   GET    /hr/public-holiday/{id}      — view
+ *   PUT    /hr/public-holiday/{id}      — update
+ *   DELETE /hr/public-holiday/{id}      — soft delete
+ *   PATCH  /hr/public-holiday/{id}      — restore
+ */
 export const holidayService = {
   async getAll() {
-    try {
-      const res = await apiClient.get('/hr/public-holidays');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-      if (res.data?.dataPayload?.data && Array.isArray(res.data.dataPayload.data)) return res.data.dataPayload.data;
-    } catch (err) {
-      console.warn('API /hr/public-holidays unavailable, trying /hr/public-holiday:', err.message);
-    }
+    const api = useApi('/hr/public-holidays', { autoFetch: false, enableCache: true });
+    await api.request();
+    const records = unwrapList(api.data.value);
+    return records.map(normalizeHoliday);
+  },
 
-    try {
-      const res = await apiClient.get('/hr/public-holiday');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-    } catch (err) {
-      console.warn('API /hr/public-holiday unavailable, using mock:', err.message);
-    }
+  async search(query) {
+    const api = useApi('/hr/public-holiday/search', { autoFetch: false });
+    await api.request(null, { q: query });
+    const records = unwrapList(api.data.value);
+    return records.map(normalizeHoliday);
+  },
 
-    return initialHolidays;
+  async getById(id) {
+    const api = useApi(`/hr/public-holiday/${id}`, { autoFetch: false });
+    await api.request();
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeHoliday(record) : null;
   },
 
   async create(data) {
-    try {
-      const res = await apiClient.post('/hr/public-holiday', data);
-      return res.data;
-    } catch (err) {
-      return { id: Date.now(), ...data };
-    }
+    const api = useApi('/hr/public-holiday', { method: 'POST', autoFetch: false });
+    await api.request(toHolidayPayload(data));
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeHoliday(record) : data;
+  },
+
+  async update(id, data) {
+    const api = useApi(`/hr/public-holiday/${id}`, { method: 'PUT', autoFetch: false });
+    await api.request(toHolidayPayload(data));
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeHoliday(record) : { ...data, holiday_id: id };
+  },
+
+  async delete(id) {
+    const api = useApi(`/hr/public-holiday/${id}`, { method: 'DELETE', autoFetch: false });
+    await api.request();
+    return true;
+  },
+
+  async restore(id) {
+    const api = useApi(`/hr/public-holiday/${id}`, { method: 'PATCH', autoFetch: false });
+    await api.request();
+    return true;
   }
 };
+
+/**
+ * Normalize a backend PublicHoliday to frontend-friendly shape.
+ */
+function normalizeHoliday(raw) {
+  return {
+    holiday_id: raw.holiday_id,
+    title: raw.holiday_name || '',
+    holiday_name: raw.holiday_name || '',
+    date: raw.holiday_date || '',
+    holiday_date: raw.holiday_date || '',
+    description: raw.description || '',
+    is_recurring: raw.is_recurring || false,
+    is_paid: raw.is_paid || false,
+    double_pay_if_worked: raw.double_pay_if_worked || false,
+    status: mapStatus(raw.status ?? 1, raw.is_deleted),
+    is_deleted: raw.is_deleted || false,
+    created_at: raw.created_at,
+    updated_at: raw.updated_at,
+  };
+}
+
+/**
+ * Transform frontend form data to backend payload.
+ */
+function toHolidayPayload(data) {
+  return {
+    holiday_name: data.holiday_name || data.title,
+    holiday_date: data.holiday_date || data.date,
+    description: data.description || '',
+    is_recurring: data.is_recurring || false,
+    is_paid: data.is_paid || false,
+    double_pay_if_worked: data.double_pay_if_worked || false,
+  };
+}
 
 export default holidayService;

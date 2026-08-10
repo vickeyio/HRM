@@ -13,10 +13,11 @@ export const useEmployeeStore = defineStore('employees', () => {
   const filteredEmployees = computed(() => {
     return employees.value.filter(emp => {
       const matchesSearch =
-        emp.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        emp.role.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        emp.department.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        emp.empId.toLowerCase().includes(searchQuery.value.toLowerCase());
+        (emp.name || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (emp.role || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (emp.department || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (emp.employee_number || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (emp.email || '').toLowerCase().includes(searchQuery.value.toLowerCase());
 
       const matchesStatus = statusFilter.value === 'All' || emp.status === statusFilter.value;
 
@@ -24,8 +25,8 @@ export const useEmployeeStore = defineStore('employees', () => {
     });
   });
 
-  async function fetchAll() {
-    if (loaded.value) return;
+  async function fetchAll(force = false) {
+    if (loaded.value && !force) return;
     isLoading.value = true;
     error.value = null;
     try {
@@ -53,7 +54,7 @@ export const useEmployeeStore = defineStore('employees', () => {
   async function updateEmployee(id, updatedData) {
     try {
       const updated = await employeeService.update(id, updatedData);
-      const index = employees.value.findIndex(e => e.id === id);
+      const index = employees.value.findIndex(e => e.employee_id === id);
       if (index !== -1) {
         employees.value[index] = updated;
       }
@@ -64,23 +65,10 @@ export const useEmployeeStore = defineStore('employees', () => {
     }
   }
 
-  async function toggleStatus(id) {
-    try {
-      const updated = await employeeService.toggleStatus(id);
-      const emp = employees.value.find(e => e.id === id);
-      if (emp) {
-        emp.status = updated.status;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to toggle status';
-    }
-  }
-
   async function deleteEmployee(id) {
     try {
       await employeeService.delete(id);
-      employees.value = employees.value.filter(e => e.id !== id);
+      employees.value = employees.value.filter(e => e.employee_id !== id);
     } catch (err) {
       error.value = err.message || 'Failed to delete employee';
       throw err;
@@ -101,7 +89,6 @@ export const useEmployeeStore = defineStore('employees', () => {
     fetchAll,
     addEmployee,
     updateEmployee,
-    toggleStatus,
     deleteEmployee
   };
 });

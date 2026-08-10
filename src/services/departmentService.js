@@ -1,57 +1,116 @@
-import apiClient from './api';
-import { initialDepartments } from './mock/data/departments';
+import { useApi } from '../composables/useApi';
+import { unwrapList, unwrapRecord, mapStatus } from '../utils/apiResponseHelper';
 
+/**
+ * Department Service — aligned with Afya365 HR backend
+ *
+ * Backend schema (Department):
+ *   department_id, facility_id, name, code, description, is_deleted, created_at, updated_at
+ *
+ * Endpoints:
+ *   GET    /hr/departments          — paginated list
+ *   GET    /hr/department/search    — search
+ *   POST   /hr/department           — create
+ *   GET    /hr/department/{id}      — view
+ *   PUT    /hr/department/{id}      — update
+ *   DELETE /hr/department/{id}      — soft delete
+ *   PATCH  /hr/department/{id}      — restore
+ */
 export const departmentService = {
+  /**
+   * Fetch all departments
+   */
   async getAll() {
-    try {
-      const res = await apiClient.get('/hr/departments');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-      if (res.data?.dataPayload?.data && Array.isArray(res.data.dataPayload.data)) return res.data.dataPayload.data;
-    } catch (err) {
-      console.warn('API /hr/departments unavailable, trying /hr/department fallback:', err.message);
-    }
-
-    try {
-      const res = await apiClient.get('/hr/department');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-    } catch (err) {
-      console.warn('API /hr/department fallback unavailable, using mock data:', err.message);
-    }
-
-    return initialDepartments;
+    const api = useApi('/hr/departments', { autoFetch: false, enableCache: true });
+    await api.request();
+    const records = unwrapList(api.data.value);
+    return records.map(normalizeDepartment);
   },
 
+  /**
+   * Search departments
+   */
+  async search(query) {
+    const api = useApi('/hr/department/search', { autoFetch: false });
+    await api.request(null, { q: query });
+    const records = unwrapList(api.data.value);
+    return records.map(normalizeDepartment);
+  },
+
+  /**
+   * Get a single department by ID
+   */
+  async getById(id) {
+    const api = useApi(`/hr/department/${id}`, { autoFetch: false });
+    await api.request();
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeDepartment(record) : null;
+  },
+
+  /**
+   * Create a new department
+   */
   async create(data) {
-    try {
-      const res = await apiClient.post('/hr/department', data);
-      return res.data?.dataPayload?.data || res.data?.data || res.data;
-    } catch (err) {
-      console.warn('API create department failed, falling back to local creation:', err.message);
-      return { id: Date.now(), ...data, employeeCount: 0, status: 'Active' };
-    }
+    const api = useApi('/hr/department', { method: 'POST', autoFetch: false });
+    await api.request(toDepartmentPayload(data));
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeDepartment(record) : data;
   },
 
+  /**
+   * Update an existing department
+   */
   async update(id, data) {
-    try {
-      const res = await apiClient.put(`/hr/department/${id}`, data);
-      return res.data;
-    } catch (err) {
-      console.warn(`API update department ${id} failed:`, err.message);
-      return { id, ...data };
-    }
+    const api = useApi(`/hr/department/${id}`, { method: 'PUT', autoFetch: false });
+    await api.request(toDepartmentPayload(data));
+    const record = unwrapRecord(api.data.value);
+    return record ? normalizeDepartment(record) : { ...data, department_id: id };
   },
 
+  /**
+   * Soft-delete a department
+   */
   async delete(id) {
-    try {
-      await apiClient.delete(`/hr/department/${id}`);
-      return true;
-    } catch (err) {
-      console.warn(`API delete department ${id} failed:`, err.message);
-      return true;
-    }
+    const api = useApi(`/hr/department/${id}`, { method: 'DELETE', autoFetch: false });
+    await api.request();
+    return true;
+  },
+
+  /**
+   * Restore a soft-deleted department
+   */
+  async restore(id) {
+    const api = useApi(`/hr/department/${id}`, { method: 'PATCH', autoFetch: false });
+    await api.request();
+    return true;
   }
 };
+
+/**
+ * Normalize a backend department record to frontend-friendly shape.
+ */
+function normalizeDepartment(raw) {
+  return {
+    department_id: raw.department_id,
+    name: raw.name || '',
+    code: raw.code || '',
+    description: raw.description || '',
+    status: mapStatus(raw.status ?? 1, raw.is_deleted),
+    is_deleted: raw.is_deleted || false,
+    created_at: raw.created_at,
+    updated_at: raw.updated_at,
+  };
+}
+
+/**
+ * Transform frontend form data to backend-expected payload.
+ */
+function toDepartmentPayload(data) {
+  return {
+    name: data.name,
+    code: data.code || '',
+    description: data.description || '',
+  };
+}
 
 export default departmentService;

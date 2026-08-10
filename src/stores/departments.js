@@ -12,14 +12,16 @@ export const useDepartmentStore = defineStore('departments', () => {
 
   const filteredDepartments = computed(() => {
     return departments.value.filter(dept => {
-      const matchesSearch = dept.name.toLowerCase().includes(searchQuery.value.toLowerCase());
+      const matchesSearch =
+        (dept.name || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (dept.code || '').toLowerCase().includes(searchQuery.value.toLowerCase());
       const matchesStatus = statusFilter.value === 'All' || dept.status === statusFilter.value;
       return matchesSearch && matchesStatus;
     });
   });
 
-  async function fetchAll() {
-    if (loaded.value) return;
+  async function fetchAll(force = false) {
+    if (loaded.value && !force) return;
     isLoading.value = true;
     error.value = null;
     try {
@@ -47,7 +49,7 @@ export const useDepartmentStore = defineStore('departments', () => {
   async function updateDepartment(id, updatedData) {
     try {
       const updated = await departmentService.update(id, updatedData);
-      const index = departments.value.findIndex(d => d.id === id);
+      const index = departments.value.findIndex(d => d.department_id === id);
       if (index !== -1) {
         departments.value[index] = updated;
       }
@@ -58,25 +60,22 @@ export const useDepartmentStore = defineStore('departments', () => {
     }
   }
 
-  async function toggleStatus(id) {
-    try {
-      const updated = await departmentService.toggleStatus(id);
-      const dept = departments.value.find(d => d.id === id);
-      if (dept) {
-        dept.status = updated.status;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to toggle status';
-    }
-  }
-
   async function deleteDepartment(id) {
     try {
       await departmentService.delete(id);
-      departments.value = departments.value.filter(d => d.id !== id);
+      departments.value = departments.value.filter(d => d.department_id !== id);
     } catch (err) {
       error.value = err.message || 'Failed to delete department';
+      throw err;
+    }
+  }
+
+  async function restoreDepartment(id) {
+    try {
+      await departmentService.restore(id);
+      await fetchAll(true);
+    } catch (err) {
+      error.value = err.message || 'Failed to restore department';
       throw err;
     }
   }
@@ -95,7 +94,7 @@ export const useDepartmentStore = defineStore('departments', () => {
     fetchAll,
     addDepartment,
     updateDepartment,
-    toggleStatus,
-    deleteDepartment
+    deleteDepartment,
+    restoreDepartment
   };
 });

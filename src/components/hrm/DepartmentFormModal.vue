@@ -16,17 +16,14 @@
         </div>
         <div class="col-md-12">
           <div class="mb-3">
-            <label class="form-label">Number of Employees</label>
-            <input type="number" v-model="formData.employeeCount" class="form-control" placeholder="0" />
+            <label class="form-label">Department Code</label>
+            <input type="text" v-model="formData.code" class="form-control" placeholder="e.g. FIN" />
           </div>
         </div>
         <div class="col-md-12">
           <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select v-model="formData.status" class="form-select">
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
+            <label class="form-label">Description</label>
+            <textarea v-model="formData.description" class="form-control" rows="3" placeholder="Brief description of the department"></textarea>
           </div>
         </div>
       </div>
@@ -49,20 +46,24 @@ const isEditMode = computed(() => !!props.departmentData);
 
 const formData = ref({
   name: '',
-  employeeCount: 0,
-  status: 'Active'
+  code: '',
+  description: ''
 });
 
 watch(
   () => props.departmentData,
   (newVal) => {
     if (newVal) {
-      formData.value = { ...newVal };
+      formData.value = {
+        name: newVal.name || '',
+        code: newVal.code || '',
+        description: newVal.description || ''
+      };
     } else {
       formData.value = {
         name: '',
-        employeeCount: 0,
-        status: 'Active'
+        code: '',
+        description: ''
       };
     }
   },

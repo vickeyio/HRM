@@ -13,16 +13,18 @@ export const useDesignationStore = defineStore('designations', () => {
 
   const filteredDesignations = computed(() => {
     return designations.value.filter(des => {
-      const matchesSearch = des.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                            des.department.toLowerCase().includes(searchQuery.value.toLowerCase());
+      const matchesSearch =
+        (des.name || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (des.title_code || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (des.department || '').toLowerCase().includes(searchQuery.value.toLowerCase());
       const matchesDept = departmentFilter.value === 'All' || des.department === departmentFilter.value;
       const matchesStatus = statusFilter.value === 'All' || des.status === statusFilter.value;
       return matchesSearch && matchesDept && matchesStatus;
     });
   });
 
-  async function fetchAll() {
-    if (loaded.value) return;
+  async function fetchAll(force = false) {
+    if (loaded.value && !force) return;
     isLoading.value = true;
     error.value = null;
     try {
@@ -50,7 +52,7 @@ export const useDesignationStore = defineStore('designations', () => {
   async function updateDesignation(id, updatedData) {
     try {
       const updated = await designationService.update(id, updatedData);
-      const index = designations.value.findIndex(d => d.id === id);
+      const index = designations.value.findIndex(d => d.job_title_id === id);
       if (index !== -1) {
         designations.value[index] = updated;
       }
@@ -61,23 +63,10 @@ export const useDesignationStore = defineStore('designations', () => {
     }
   }
 
-  async function toggleStatus(id) {
-    try {
-      const updated = await designationService.toggleStatus(id);
-      const des = designations.value.find(d => d.id === id);
-      if (des) {
-        des.status = updated.status;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to toggle status';
-    }
-  }
-
   async function deleteDesignation(id) {
     try {
       await designationService.delete(id);
-      designations.value = designations.value.filter(d => d.id !== id);
+      designations.value = designations.value.filter(d => d.job_title_id !== id);
     } catch (err) {
       error.value = err.message || 'Failed to delete designation';
       throw err;
@@ -99,7 +88,6 @@ export const useDesignationStore = defineStore('designations', () => {
     fetchAll,
     addDesignation,
     updateDesignation,
-    toggleStatus,
     deleteDesignation
   };
 });

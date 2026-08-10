@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import apiClient from '../services/api';
+import { useApi } from '../composables/useApi';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('auth_token') || null);
@@ -13,57 +13,46 @@ export const useAuthStore = defineStore('auth', () => {
   const userAvatar = computed(() => user.value?.avatar || '/assets/img/profiles/avatar-12.jpg');
 
   async function login({ email, password, username, role = 'Admin' }) {
-    try {
-      // Try live API login against IAM endpoint
-      const response = await apiClient.post('/iam/auth/login', {
-        username: username || email,
-        password: password
-      });
+    const loginApi = useApi('/iam/auth/login', { method: 'POST', autoFetch: false });
+    await loginApi.request({
+      username: username || email,
+      password: password
+    });
 
-      const data = response.data;
-      const apiToken = data.token || data.access_token || data.dataPayload?.token;
-      const apiUser = data.user || data.dataPayload?.user || {
-        name: username || email,
-        email: email,
-        role: role
-      };
+    const data = loginApi.data.value;
 
-      if (apiToken) {
-        token.value = apiToken;
-        user.value = apiUser;
-        localStorage.setItem('auth_token', apiToken);
-        localStorage.setItem('auth_user', JSON.stringify(apiUser));
-        return apiUser;
-      }
-    } catch (err) {
-      console.warn('Backend API connection failed, using fallback mock authentication:', err.message);
+    // Extract token — backend returns { dataPayload: { data: { access_token: '...' } } }
+    const apiToken =
+      data?.dataPayload?.data?.access_token ||
+      data?.dataPayload?.token ||
+      data?.access_token ||
+      data?.token;
+
+    if (!apiToken) {
+      throw new Error('Authentication failed: No token returned from server');
     }
 
-    // Fallback simulated authentication
-    const mockUser = {
-      id: Date.now(),
-      name: role === 'Admin' ? 'Adrian Montero' : role === 'HR Manager' ? 'Sarah Connor' : 'Anthony Lewis',
-      email: email || (role === 'Admin' ? 'adrian@smarthr.co.in' : role === 'HR Manager' ? 'sarah@smarthr.co.in' : 'anthony@smarthr.co.in'),
-      role: role,
-      avatar: role === 'Admin' ? '/assets/img/profiles/avatar-12.jpg' : role === 'HR Manager' ? '/assets/img/profiles/avatar-02.jpg' : '/assets/img/profiles/avatar-05.jpg'
+    // Extract user info from token claims or response
+    const apiUser = data?.dataPayload?.data?.user || data?.user || {
+      name: username || email,
+      email: email,
+      role: role
     };
 
-    const mockToken = `jwt-token-${Date.now()}`;
-    token.value = mockToken;
-    user.value = mockUser;
-
-    localStorage.setItem('auth_token', mockToken);
-    localStorage.setItem('auth_user', JSON.stringify(mockUser));
-
-    return mockUser;
+    token.value = apiToken;
+    user.value = apiUser;
+    localStorage.setItem('auth_token', apiToken);
+    localStorage.setItem('auth_user', JSON.stringify(apiUser));
+    return apiUser;
   }
 
   async function fetchCurrentUser() {
     if (!token.value) return;
     try {
-      const res = await apiClient.get('/iam/auth/me');
-      if (res.data) {
-        user.value = { ...user.value, ...res.data };
+      const meApi = useApi('/iam/auth/me', { autoFetch: false, enableCache: true });
+      await meApi.request();
+      if (meApi.data.value) {
+        user.value = { ...user.value, ...meApi.data.value };
         localStorage.setItem('auth_user', JSON.stringify(user.value));
       }
     } catch (err) {
@@ -73,7 +62,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     if (token.value) {
-      apiClient.post('/iam/auth/logout').catch(() => {});
+      const logoutApi = useApi('/iam/auth/logout', { method: 'POST', autoFetch: false });
+      logoutApi.request().catch(() => {});
     }
     token.value = null;
     user.value = null;

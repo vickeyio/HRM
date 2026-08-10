@@ -1,4 +1,4 @@
-import apiClient from './api';
+import { useApi } from '../composables/useApi';
 
 export const initialRoles = [
   { id: '1', name: 'Administrator', description: 'Full access to all system modules and settings', permissionsCount: 45 },
@@ -17,10 +17,12 @@ export const initialPermissions = [
 export const rbacService = {
   async getRoles() {
     try {
-      const res = await apiClient.get('/iam/rbac/roles');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-      if (res.data?.dataPayload?.data && Array.isArray(res.data.dataPayload.data)) return res.data.dataPayload.data;
+      const api = useApi('/iam/rbac/roles', { autoFetch: false, enableCache: true });
+      await api.request();
+      const res = api.data.value;
+      if (res && Array.isArray(res)) return res;
+      if (res?.data && Array.isArray(res.data)) return res.data;
+      if (res?.dataPayload?.data && Array.isArray(res.dataPayload.data)) return res.dataPayload.data;
     } catch (err) {
       console.warn('API /iam/rbac/roles unavailable, using mock fallback:', err.message);
     }
@@ -29,10 +31,12 @@ export const rbacService = {
 
   async getPermissions() {
     try {
-      const res = await apiClient.get('/iam/rbac/permissions');
-      if (res.data && Array.isArray(res.data)) return res.data;
-      if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-      if (res.data?.dataPayload?.data && Array.isArray(res.data.dataPayload.data)) return res.data.dataPayload.data;
+      const api = useApi('/iam/rbac/permissions', { autoFetch: false, enableCache: true });
+      await api.request();
+      const res = api.data.value;
+      if (res && Array.isArray(res)) return res;
+      if (res?.data && Array.isArray(res.data)) return res.data;
+      if (res?.dataPayload?.data && Array.isArray(res.dataPayload.data)) return res.dataPayload.data;
     } catch (err) {
       console.warn('API /iam/rbac/permissions unavailable, using mock fallback:', err.message);
     }
@@ -41,8 +45,9 @@ export const rbacService = {
 
   async createRole(roleData) {
     try {
-      const res = await apiClient.post('/iam/rbac/role', roleData);
-      return res.data;
+      const api = useApi('/iam/rbac/role', { method: 'POST', autoFetch: false });
+      await api.request(roleData);
+      return api.data.value;
     } catch (err) {
       console.warn('API create role failed, using local mock creation:', err.message);
       return { id: String(Date.now()), permissionsCount: 0, ...roleData };
@@ -51,8 +56,9 @@ export const rbacService = {
 
   async assignRole(userId, roleId) {
     try {
-      const res = await apiClient.post(`/iam/rbac/role/assign/${roleId}`, { userId });
-      return res.data;
+      const api = useApi(`/iam/rbac/role/assign/${roleId}`, { method: 'POST', autoFetch: false });
+      await api.request({ userId });
+      return api.data.value;
     } catch (err) {
       console.warn(`API assign role ${roleId} failed:`, err.message);
       return true;

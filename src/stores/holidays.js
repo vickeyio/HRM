@@ -12,15 +12,16 @@ export const useHolidayStore = defineStore('holidays', () => {
 
   const filteredHolidays = computed(() => {
     return holidays.value.filter(h => {
-      const matchesSearch = h.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                            h.description.toLowerCase().includes(searchQuery.value.toLowerCase());
+      const matchesSearch =
+        (h.title || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        (h.description || '').toLowerCase().includes(searchQuery.value.toLowerCase());
       const matchesStatus = statusFilter.value === 'All' || h.status === statusFilter.value;
       return matchesSearch && matchesStatus;
     });
   });
 
-  async function fetchAll() {
-    if (loaded.value) return;
+  async function fetchAll(force = false) {
+    if (loaded.value && !force) return;
     isLoading.value = true;
     error.value = null;
     try {
@@ -48,7 +49,7 @@ export const useHolidayStore = defineStore('holidays', () => {
   async function updateHoliday(id, updatedData) {
     try {
       const updated = await holidayService.update(id, updatedData);
-      const index = holidays.value.findIndex(h => h.id === id);
+      const index = holidays.value.findIndex(h => h.holiday_id === id);
       if (index !== -1) {
         holidays.value[index] = updated;
       }
@@ -59,23 +60,10 @@ export const useHolidayStore = defineStore('holidays', () => {
     }
   }
 
-  async function toggleStatus(id) {
-    try {
-      const updated = await holidayService.toggleStatus(id);
-      const holiday = holidays.value.find(h => h.id === id);
-      if (holiday) {
-        holiday.status = updated.status;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to toggle status';
-    }
-  }
-
   async function deleteHoliday(id) {
     try {
       await holidayService.delete(id);
-      holidays.value = holidays.value.filter(h => h.id !== id);
+      holidays.value = holidays.value.filter(h => h.holiday_id !== id);
     } catch (err) {
       error.value = err.message || 'Failed to delete holiday';
       throw err;
@@ -96,7 +84,6 @@ export const useHolidayStore = defineStore('holidays', () => {
     fetchAll,
     addHoliday,
     updateHoliday,
-    toggleStatus,
     deleteHoliday
   };
 });

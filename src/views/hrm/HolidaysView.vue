@@ -49,10 +49,10 @@
                   No holidays found matching search criteria.
                 </td>
               </tr>
-              <tr v-for="h in displayedItems" :key="h.id">
+              <tr v-for="h in displayedItems" :key="h.holiday_id">
                 <td>
                   <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="h.id" v-model="selectedIds">
+                    <input class="form-check-input" type="checkbox" :value="h.holiday_id" v-model="selectedIds">
                   </div>
                 </td>
                 <td>
@@ -65,14 +65,14 @@
                 </td>
                 <td>{{ h.description }}</td>
                 <td>
-                  <span :class="['badge d-inline-flex align-items-center badge-sm', h.status === 'Active' ? 'badge-success' : 'badge-danger']" style="cursor: pointer;" @click="holidayStore.toggleStatus(h.id)">
+                  <span :class="['badge d-inline-flex align-items-center badge-sm', h.status === 'Active' ? 'badge-success' : 'badge-danger']">
                     <i class="ti ti-point-filled me-1"></i>{{ h.status }}
                   </span>
                 </td>
                 <td>
                   <div class="action-icon d-inline-flex">
                     <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(h)" title="Edit Holiday"><i class="ti ti-edit"></i></a>
-                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(h.id)" title="Delete Holiday"><i class="ti ti-trash"></i></a>
+                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(h.holiday_id)" title="Delete Holiday"><i class="ti ti-trash"></i></a>
                   </div>
                 </td>
               </tr>
@@ -124,8 +124,8 @@ function openEditModal(h) {
 
 async function handleSaveHoliday(formData) {
   try {
-    if (selectedHoliday.value && selectedHoliday.value.id) {
-      await holidayStore.updateHoliday(selectedHoliday.value.id, formData);
+    if (selectedHoliday.value && selectedHoliday.value.holiday_id) {
+      await holidayStore.updateHoliday(selectedHoliday.value.holiday_id, formData);
     } else {
       await holidayStore.addHoliday(formData);
     }
