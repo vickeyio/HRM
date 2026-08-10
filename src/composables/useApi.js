@@ -206,11 +206,16 @@ export function useApi(baseUrl, {
 
             // Handle pagination metadata
             if (pagination) {
+                const dp = response.data?.dataPayload;
                 if (typeof transformPagination === 'function') {
                     const meta = transformPagination(response.data);
                     totalItems.value = meta.totalItems ?? totalItems.value;
                     currentPage.value = meta.currentPage ?? currentPage.value;
                     perPage.value = meta.perPage ?? perPage.value;
+                } else if (dp) {
+                    totalItems.value = dp.totalCount ?? totalItems.value;
+                    currentPage.value = dp.currentPage ?? currentPage.value;
+                    perPage.value = dp.perPage ?? perPage.value;
                 } else if (response.data?.meta) {
                     totalItems.value = response.data.meta.total || null;
                     currentPage.value = response.data.meta.current_page || currentPage.value;

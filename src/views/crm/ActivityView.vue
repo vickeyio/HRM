@@ -67,45 +67,37 @@
       </div>
     </div>
 
-    <!-- Add Activity Modal Simulation -->
-    <div v-if="showAddModal" class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-          <div class="modal-header">
-            <h5 class="modal-title fw-bold">Add New Activity</h5>
-            <button type="button" class="btn-close" @click="showAddModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Activity Title</label>
-              <input type="text" v-model="newActivity.title" class="form-control" placeholder="e.g. Follow-up Client Meeting" />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Type</label>
-              <select v-model="newActivity.type" class="form-select">
-                <option value="Meeting">Meeting</option>
-                <option value="Call">Call</option>
-                <option value="Email">Email</option>
-                <option value="Task">Task</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea v-model="newActivity.description" class="form-control" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light" @click="showAddModal = false">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="addActivity">Save Activity</button>
-          </div>
-        </div>
+    <!-- Add Activity Base Modal -->
+    <BaseModal
+      v-model="showAddModal"
+      title="Add New Activity"
+      save-label="Save Activity"
+      @save="addActivity"
+    >
+      <div class="mb-3">
+        <label class="form-label">Activity Title</label>
+        <input type="text" v-model="newActivity.title" class="form-control" placeholder="e.g. Follow-up Client Meeting" />
       </div>
-    </div>
+      <div class="mb-3">
+        <label class="form-label">Type</label>
+        <select v-model="newActivity.type" class="form-select">
+          <option value="Meeting">Meeting</option>
+          <option value="Call">Call</option>
+          <option value="Email">Email</option>
+          <option value="Task">Task</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea v-model="newActivity.description" class="form-control" rows="3"></textarea>
+      </div>
+    </BaseModal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
+import BaseModal from '../../components/common/BaseModal.vue';
 
 const searchQuery = ref('');
 const currentTab = ref('all');

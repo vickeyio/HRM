@@ -1,5 +1,5 @@
 import { useApi } from '../composables/useApi';
-import { unwrapList, unwrapRecord, mapStatus } from '../utils/apiResponseHelper';
+import { unwrapList, unwrapRecord, unwrapPagination, mapStatus } from '../utils/apiResponseHelper';
 
 /**
  * Department Service — aligned with Afya365 HR backend
@@ -20,11 +20,13 @@ export const departmentService = {
   /**
    * Fetch all departments
    */
-  async getAll() {
-    const api = useApi('/hr/departments', { autoFetch: false, enableCache: true });
-    await api.request();
-    const records = unwrapList(api.data.value);
-    return records.map(normalizeDepartment);
+  async getAll(params = {}) {
+    const api = useApi('/hr/departments', { autoFetch: false, enableCache: true, pagination: true });
+    await api.request(null, params);
+    const records = unwrapList(api.data.value).map(normalizeDepartment);
+    const pagination = unwrapPagination(api.data.value);
+    records.pagination = pagination;
+    return records;
   },
 
   /**
@@ -90,10 +92,12 @@ export const departmentService = {
  * Normalize a backend department record to frontend-friendly shape.
  */
 function normalizeDepartment(raw) {
+  const id = raw.department_id ?? raw.id;
   return {
-    department_id: raw.department_id,
-    name: raw.name || '',
-    code: raw.code || '',
+    id: id,
+    department_id: id,
+    name: raw.department_name || raw.name || '',
+    code: raw.department_code || raw.code || '',
     description: raw.description || '',
     status: mapStatus(raw.status ?? 1, raw.is_deleted),
     is_deleted: raw.is_deleted || false,
@@ -107,8 +111,10 @@ function normalizeDepartment(raw) {
  */
 function toDepartmentPayload(data) {
   return {
-    name: data.name,
-    code: data.code || '',
+    department_name: data.name || data.department_name || '',
+    department_code: data.code || data.department_code || '',
+    name: data.name || data.department_name || '',
+    code: data.code || data.department_code || '',
     description: data.description || '',
   };
 }

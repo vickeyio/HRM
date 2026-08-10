@@ -72,10 +72,12 @@ export const designationService = {
  * The view/store use `name` for display — we alias `title_name` → `name`.
  */
 function normalizeJobTitle(raw) {
+  const id = raw.job_title_id ?? raw.id;
   return {
-    job_title_id: raw.job_title_id,
-    name: raw.title_name || '',
-    title_name: raw.title_name || '',
+    id: id,
+    job_title_id: id,
+    name: raw.title_name || raw.name || '',
+    title_name: raw.title_name || raw.name || '',
     title_code: raw.title_code || '',
     title_description: raw.title_description || '',
     department_id: raw.department_id || null,

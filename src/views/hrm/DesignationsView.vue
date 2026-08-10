@@ -9,84 +9,63 @@
       @export="exportData"
     />
 
-    <!-- Designation List Card -->
-    <div class="card">
-      <DataTableToolbar
-        title="Designation List"
-        v-model:search="designationStore.searchQuery"
-        search-placeholder="Search designation..."
-        v-model:status="designationStore.statusFilter"
-        v-model:sort="sortBy"
-      />
+    <!-- Designation Base Data Table -->
+    <BaseDataTable
+      :columns="tableColumns"
+      :items="paginatedItems"
+      :is-loading="designationStore.isLoading"
+      :error="designationStore.error"
+      selectable
+      v-model:selected-ids="selectedIds"
+      :is-all-selected="isAllSelected"
+      id-key="id"
+      empty-text="No designations found matching search criteria."
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-count="totalCount"
+      :page-size="pageSize"
+      @toggle-select-all="toggleSelectAll"
+      @next-page="nextPage"
+      @prev-page="prevPage"
+      @go-to-page="goToPage"
+    >
+      <template #toolbar>
+        <DataTableToolbar
+          title="Designation List"
+          v-model:search="designationStore.searchQuery"
+          search-placeholder="Search designation..."
+          v-model:status="designationStore.statusFilter"
+          v-model:sort="sortBy"
+        />
+      </template>
 
-      <div v-if="designationStore.isLoading" class="card-body p-0 text-center py-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted">Loading designations...</p>
-      </div>
-      <div v-else-if="designationStore.error" class="card-body p-0 text-center py-5">
-        <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
-        <p class="text-muted mb-0">{{ designationStore.error }}</p>
-      </div>
-      <div v-else class="card-body p-0">
-        <div class="custom-datatable-filter table-responsive">
-          <table class="table datatable">
-            <thead class="thead-light">
-              <tr>
-                <th class="no-sort">
-                  <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :checked="isAllSelected" @change="toggleSelectAll">
-                  </div>
-                </th>
-                <th>Designation</th>
-                <th>Code</th>
-                <th>Department</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="displayedItems.length === 0">
-                <td colspan="6" class="text-center py-5 text-muted">
-                  <i class="ti ti-search-off fs-1 d-block mb-2 text-secondary"></i>
-                  No designations found matching search criteria.
-                </td>
-              </tr>
-              <tr v-for="des in displayedItems" :key="des.job_title_id">
-                <td>
-                  <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="des.job_title_id" v-model="selectedIds">
-                  </div>
-                </td>
-                <td>
-                  <h6 class="fw-medium fs-14 text-dark mb-0"><a href="javascript:void(0);" class="text-dark" @click="openEditModal(des)">{{ des.name }}</a></h6>
-                </td>
-                <td><span class="badge badge-soft-secondary">{{ des.title_code || '—' }}</span></td>
-                <td>{{ des.department || '—' }}</td>
-                <td>
-                  <span :class="['badge d-inline-flex align-items-center badge-xs', des.status === 'Active' ? 'badge-success' : 'badge-danger']">
-                    <i class="ti ti-point-filled me-1"></i>{{ des.status }}
-                  </span>
-                </td>
-                <td>
-                  <div class="action-icon d-inline-flex">
-                    <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(des)" title="Edit Designation"><i class="ti ti-edit"></i></a>
-                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(des.job_title_id)" title="Delete Designation"><i class="ti ti-trash"></i></a>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <template #cell(name)="{ item }">
+        <h6 class="fw-medium fs-14 text-dark mb-0">
+          <a href="javascript:void(0);" class="text-dark" @click="openEditModal(item)">{{ item.name }}</a>
+        </h6>
+      </template>
+
+      <template #cell(title_code)="{ value }">
+        <span class="badge badge-soft-secondary">{{ value || '—' }}</span>
+      </template>
+
+      <template #cell(department)="{ value }">
+        <span>{{ value || '—' }}</span>
+      </template>
+
+      <template #cell(status)="{ value }">
+        <span :class="['badge d-inline-flex align-items-center badge-xs', value === 'Active' ? 'badge-success' : 'badge-danger']">
+          <i class="ti ti-point-filled me-1"></i>{{ value }}
+        </span>
+      </template>
+
+      <template #actions="{ item }">
+        <div class="action-icon d-inline-flex">
+          <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(item)" title="Edit Designation"><i class="ti ti-edit"></i></a>
+          <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(item.id)" title="Delete Designation"><i class="ti ti-trash"></i></a>
         </div>
-      </div>
-    </div>
-
-    <!-- Designation Form Modal -->
-    <DesignationFormModal
-      :is-open="isModalOpen"
-      :designation-data="selectedDesignation"
-      @close="isModalOpen = false"
-      @save="handleSaveDesignation"
-    />
+      </template>
+    </BaseDataTable>
   </div>
 </template>
 
@@ -94,50 +73,92 @@
 import { ref, toRef } from 'vue';
 import { useDesignationStore } from '../../stores/designations';
 import { useCrudTable } from '../../composables/useCrudTable';
+import { useModalStore } from '../../stores/modal';
 import PageHeader from '../../components/common/PageHeader.vue';
 import DataTableToolbar from '../../components/common/DataTableToolbar.vue';
+import BaseDataTable from '../../components/common/BaseDataTable.vue';
 import DesignationFormModal from '../../components/hrm/DesignationFormModal.vue';
+import ConfirmModal from '../../components/common/ConfirmModal.vue';
 
 const designationStore = useDesignationStore();
+const modalStore = useModalStore();
 
-const isModalOpen = ref(false);
-const selectedDesignation = ref(null);
+const tableColumns = [
+  { key: 'name', label: 'Designation' },
+  { key: 'title_code', label: 'Code' },
+  { key: 'department', label: 'Department' },
+  { key: 'status', label: 'Status' },
+];
 
 const {
   sortBy,
   selectedIds,
-  displayedItems,
+  paginatedItems,
+  currentPage,
+  totalPages,
+  totalCount,
+  pageSize,
   isAllSelected,
   toggleSelectAll,
+  nextPage,
+  prevPage,
+  goToPage,
   exportData
-} = useCrudTable(toRef(designationStore, 'filteredDesignations'), { searchFields: ['name', 'title_code'] });
+} = useCrudTable(toRef(designationStore, 'filteredDesignations'), {
+  searchFields: ['name', 'title_code'],
+  idKey: 'id',
+  serverSide: true,
+  serverTotalCount: toRef(designationStore, 'totalCount'),
+  onFetch: async ({ page, perPage, search }) => {
+    await designationStore.fetchAll({ page, per_page: perPage, q: search }, true);
+  }
+});
 
 function openAddModal() {
-  selectedDesignation.value = null;
-  isModalOpen.value = true;
+  modalStore.open({
+    component: DesignationFormModal,
+    props: {
+      isOpen: true,
+      designationData: null,
+      onSave: async (formData) => {
+        try {
+          await designationStore.addDesignation(formData);
+        } catch (err) {
+          console.error('Failed to add designation:', err);
+          throw err;
+        }
+      }
+    }
+  });
 }
 
 function openEditModal(des) {
-  selectedDesignation.value = { ...des };
-  isModalOpen.value = true;
-}
-
-async function handleSaveDesignation(formData) {
-  try {
-    if (selectedDesignation.value && selectedDesignation.value.job_title_id) {
-      await designationStore.updateDesignation(selectedDesignation.value.job_title_id, formData);
-    } else {
-      await designationStore.addDesignation(formData);
+  modalStore.open({
+    component: DesignationFormModal,
+    props: {
+      isOpen: true,
+      designationData: des,
+      onSave: async (formData) => {
+        try {
+          await designationStore.updateDesignation(des.id, formData);
+        } catch (err) {
+          console.error('Failed to update designation:', err);
+          throw err;
+        }
+      }
     }
-    isModalOpen.value = false;
-  } catch (err) {
-    console.error('Failed to save designation:', err);
-  }
+  });
 }
 
 function confirmDelete(id) {
-  if (confirm('Are you sure you want to delete this designation?')) {
-    designationStore.deleteDesignation(id).catch(err => console.error('Failed to delete designation:', err));
-  }
+  modalStore.open({
+    component: ConfirmModal,
+    props: {
+      isOpen: true,
+      heading: 'Delete Designation',
+      message: 'Are you sure you want to delete this designation? This action cannot be undone.',
+      onConfirm: () => designationStore.deleteDesignation(id)
+    }
+  });
 }
 </script>

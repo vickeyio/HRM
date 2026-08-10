@@ -9,84 +9,63 @@
       @export="exportData"
     />
 
-    <!-- Department List Card -->
-    <div class="card">
-      <DataTableToolbar
-        title="Department List"
-        v-model:search="departmentStore.searchQuery"
-        search-placeholder="Search department..."
-        v-model:status="departmentStore.statusFilter"
-        v-model:sort="sortBy"
-      />
+    <!-- Department Base Data Table -->
+    <BaseDataTable
+      :columns="tableColumns"
+      :items="paginatedItems"
+      :is-loading="departmentStore.isLoading"
+      :error="departmentStore.error"
+      selectable
+      v-model:selected-ids="selectedIds"
+      :is-all-selected="isAllSelected"
+      id-key="id"
+      empty-text="No departments found matching search criteria."
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-count="totalCount"
+      :page-size="pageSize"
+      @toggle-select-all="toggleSelectAll"
+      @next-page="nextPage"
+      @prev-page="prevPage"
+      @go-to-page="goToPage"
+    >
+      <template #toolbar>
+        <DataTableToolbar
+          title="Department List"
+          v-model:search="departmentStore.searchQuery"
+          search-placeholder="Search department..."
+          v-model:status="departmentStore.statusFilter"
+          v-model:sort="sortBy"
+        />
+      </template>
 
-      <div v-if="departmentStore.isLoading" class="card-body p-0 text-center py-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted">Loading departments...</p>
-      </div>
-      <div v-else-if="departmentStore.error" class="card-body p-0 text-center py-5">
-        <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
-        <p class="text-muted mb-0">{{ departmentStore.error }}</p>
-      </div>
-      <div v-else class="card-body p-0">
-        <div class="custom-datatable-filter table-responsive">
-          <table class="table datatable">
-            <thead class="thead-light">
-              <tr>
-                <th class="no-sort">
-                  <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :checked="isAllSelected" @change="toggleSelectAll">
-                  </div>
-                </th>
-                <th>Department</th>
-                <th>Code</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="displayedItems.length === 0">
-                <td colspan="6" class="text-center py-5 text-muted">
-                  <i class="ti ti-search-off fs-1 d-block mb-2 text-secondary"></i>
-                  No departments found matching search criteria.
-                </td>
-              </tr>
-              <tr v-for="dept in displayedItems" :key="dept.department_id">
-                <td>
-                  <div class="form-check form-check-md">
-                    <input class="form-check-input" type="checkbox" :value="dept.department_id" v-model="selectedIds">
-                  </div>
-                </td>
-                <td>
-                  <h6 class="fw-medium mb-0"><a href="javascript:void(0);" class="text-dark" @click="openEditModal(dept)">{{ dept.name }}</a></h6>
-                </td>
-                <td><span class="badge badge-soft-secondary">{{ dept.code || '—' }}</span></td>
-                <td class="text-truncate" style="max-width: 250px;">{{ dept.description || '—' }}</td>
-                <td>
-                  <span :class="['badge d-inline-flex align-items-center badge-xs', dept.status === 'Active' ? 'badge-success' : 'badge-danger']">
-                    <i class="ti ti-point-filled me-1"></i>{{ dept.status }}
-                  </span>
-                </td>
-                <td>
-                  <div class="action-icon d-inline-flex">
-                    <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(dept)" title="Edit Department"><i class="ti ti-edit"></i></a>
-                    <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(dept.department_id)" title="Delete Department"><i class="ti ti-trash"></i></a>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <template #cell(name)="{ item }">
+        <h6 class="fw-medium mb-0">
+          <a href="javascript:void(0);" class="text-dark" @click="openEditModal(item)">{{ item.name }}</a>
+        </h6>
+      </template>
+
+      <template #cell(code)="{ value }">
+        <span class="badge badge-soft-secondary">{{ value || '—' }}</span>
+      </template>
+
+      <template #cell(description)="{ value }">
+        <span class="text-truncate d-inline-block" style="max-width: 250px;">{{ value || '—' }}</span>
+      </template>
+
+      <template #cell(status)="{ value }">
+        <span :class="['badge d-inline-flex align-items-center badge-xs', value === 'Active' ? 'badge-success' : 'badge-danger']">
+          <i class="ti ti-point-filled me-1"></i>{{ value }}
+        </span>
+      </template>
+
+      <template #actions="{ item }">
+        <div class="action-icon d-inline-flex">
+          <a href="javascript:void(0);" class="me-2 text-secondary" @click="openEditModal(item)" title="Edit Department"><i class="ti ti-edit"></i></a>
+          <a href="javascript:void(0);" class="text-danger" @click="confirmDelete(item.id)" title="Delete Department"><i class="ti ti-trash"></i></a>
         </div>
-      </div>
-    </div>
-
-    <!-- Department Form Modal -->
-    <DepartmentFormModal
-      :is-open="isModalOpen"
-      :department-data="selectedDepartment"
-      @close="isModalOpen = false"
-      @save="handleSaveDepartment"
-    />
+      </template>
+    </BaseDataTable>
   </div>
 </template>
 
@@ -94,50 +73,92 @@
 import { ref, toRef } from 'vue';
 import { useDepartmentStore } from '../../stores/departments';
 import { useCrudTable } from '../../composables/useCrudTable';
+import { useModalStore } from '../../stores/modal';
 import PageHeader from '../../components/common/PageHeader.vue';
 import DataTableToolbar from '../../components/common/DataTableToolbar.vue';
+import BaseDataTable from '../../components/common/BaseDataTable.vue';
 import DepartmentFormModal from '../../components/hrm/DepartmentFormModal.vue';
+import ConfirmModal from '../../components/common/ConfirmModal.vue';
 
 const departmentStore = useDepartmentStore();
+const modalStore = useModalStore();
 
-const isModalOpen = ref(false);
-const selectedDepartment = ref(null);
+const tableColumns = [
+  { key: 'name', label: 'Department' },
+  { key: 'code', label: 'Code' },
+  { key: 'description', label: 'Description' },
+  { key: 'status', label: 'Status' },
+];
 
 const {
   sortBy,
   selectedIds,
-  displayedItems,
+  paginatedItems,
+  currentPage,
+  totalPages,
+  totalCount,
+  pageSize,
   isAllSelected,
   toggleSelectAll,
+  nextPage,
+  prevPage,
+  goToPage,
   exportData
-} = useCrudTable(toRef(departmentStore, 'filteredDepartments'), { searchFields: ['name', 'code'] });
+} = useCrudTable(toRef(departmentStore, 'filteredDepartments'), {
+  searchFields: ['name', 'code'],
+  idKey: 'id',
+  serverSide: true,
+  serverTotalCount: toRef(departmentStore, 'totalCount'),
+  onFetch: async ({ page, perPage, search }) => {
+    await departmentStore.fetchAll({ page, per_page: perPage, q: search }, true);
+  }
+});
 
 function openAddModal() {
-  selectedDepartment.value = null;
-  isModalOpen.value = true;
+  modalStore.open({
+    component: DepartmentFormModal,
+    props: {
+      isOpen: true,
+      departmentData: null,
+      onSave: async (formData) => {
+        try {
+          await departmentStore.addDepartment(formData);
+        } catch (err) {
+          console.error('Failed to add department:', err);
+          throw err;
+        }
+      }
+    }
+  });
 }
 
 function openEditModal(dept) {
-  selectedDepartment.value = { ...dept };
-  isModalOpen.value = true;
-}
-
-async function handleSaveDepartment(formData) {
-  try {
-    if (selectedDepartment.value && selectedDepartment.value.department_id) {
-      await departmentStore.updateDepartment(selectedDepartment.value.department_id, formData);
-    } else {
-      await departmentStore.addDepartment(formData);
+  modalStore.open({
+    component: DepartmentFormModal,
+    props: {
+      isOpen: true,
+      departmentData: dept,
+      onSave: async (formData) => {
+        try {
+          await departmentStore.updateDepartment(dept.id, formData);
+        } catch (err) {
+          console.error('Failed to update department:', err);
+          throw err;
+        }
+      }
     }
-    isModalOpen.value = false;
-  } catch (err) {
-    console.error('Failed to save department:', err);
-  }
+  });
 }
 
 function confirmDelete(id) {
-  if (confirm('Are you sure you want to delete this department?')) {
-    departmentStore.deleteDepartment(id).catch(err => console.error('Failed to delete department:', err));
-  }
+  modalStore.open({
+    component: ConfirmModal,
+    props: {
+      isOpen: true,
+      heading: 'Delete Department',
+      message: 'Are you sure you want to delete this department? This action cannot be undone.',
+      onConfirm: () => departmentStore.deleteDepartment(id)
+    }
+  });
 }
 </script>

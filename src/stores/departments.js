@@ -20,12 +20,16 @@ export const useDepartmentStore = defineStore('departments', () => {
     });
   });
 
-  async function fetchAll(force = false) {
-    if (loaded.value && !force) return;
+  const totalCount = ref(0);
+
+  async function fetchAll(params = {}, force = false) {
+    if (loaded.value && !force && Object.keys(params).length === 0) return;
     isLoading.value = true;
     error.value = null;
     try {
-      departments.value = await departmentService.getAll();
+      const res = await departmentService.getAll(params);
+      departments.value = res;
+      totalCount.value = res.pagination?.totalCount ?? res.length;
       loaded.value = true;
     } catch (err) {
       error.value = err.message || 'Failed to load departments';
@@ -90,6 +94,7 @@ export const useDepartmentStore = defineStore('departments', () => {
     statusFilter,
     isLoading,
     error,
+    totalCount,
     filteredDepartments,
     fetchAll,
     addDepartment,
