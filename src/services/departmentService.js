@@ -55,6 +55,7 @@ export const departmentService = {
   async create(data) {
     const api = useApi('/hr/department', { method: 'POST', autoFetch: false });
     await api.request(toDepartmentPayload(data));
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeDepartment(record) : data;
   },
@@ -65,6 +66,7 @@ export const departmentService = {
   async update(id, data) {
     const api = useApi(`/hr/department/${id}`, { method: 'PUT', autoFetch: false });
     await api.request(toDepartmentPayload(data));
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeDepartment(record) : { ...data, department_id: id };
   },
@@ -75,6 +77,7 @@ export const departmentService = {
   async delete(id) {
     const api = useApi(`/hr/department/${id}`, { method: 'DELETE', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   },
 
@@ -84,9 +87,11 @@ export const departmentService = {
   async restore(id) {
     const api = useApi(`/hr/department/${id}`, { method: 'PATCH', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   }
 };
+
 
 /**
  * Normalize a backend department record to frontend-friendly shape.
@@ -110,7 +115,10 @@ function normalizeDepartment(raw) {
  * Transform frontend form data to backend-expected payload.
  */
 function toDepartmentPayload(data) {
+  const authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+  const facilityId = data.facility_id || authUser.facility_id || 1;
   return {
+    facility_id: facilityId,
     department_name: data.name || data.department_name || '',
     department_code: data.code || data.department_code || '',
     name: data.name || data.department_name || '',

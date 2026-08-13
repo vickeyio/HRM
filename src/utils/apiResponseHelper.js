@@ -1,11 +1,11 @@
 /**
- * Shared helper to unwrap the Afya365 backend `dataPayload` response envelope.
+ * Shared helper to unwrap backend response envelopes and format errors.
  *
  * Backend responses follow this structure:
  *   List:   { dataPayload: { data: [...], totalCount, perPage, currentPage, ... } }
  *   Single: { dataPayload: { data: { ... } } }
- *   Alert:  { alertifyPayload: { ... } }
- *   Error:  { errorPayload: { errors: { ... } } }
+ *   Alert:  { dataPayload: { alertify: { theme: '...', type: '...', message: '...' } } } or { alertifyPayload: { ... } }
+ *   Error:  { errorPayload: { errors: { ... }, message: '...' } }
  */
 
 /**
@@ -87,4 +87,106 @@ export function mapStatus(status, isDeleted = false) {
  */
 export function reverseMapStatus(status) {
   return status === 'Active' ? 1 : 0;
+}
+
+/**
+ * Normalise a backend error into `{ fieldErrors, message, isValidation }`.
+ * Thoroughly handles nested `errorPayload.errors` and direct field validation maps.
+ *
+ * @param {Object|Array|string} err - Raw error from API / service / Axios
+ * @returns {{ fieldErrors: Object, message: string, isValidation: boolean }}
+ */
+export function parseBackendError(err) {
+  if (!err) {
+    return { fieldErrors: {}, message: 'An unknown error occurred.', isValidation: false };
+  }
+
+  if (typeof err === 'string') {
+    return { fieldErrors: {}, message: err, isValidation: false };
+  }
+
+  const resData = err?.response?.data;
+  const payload = resData?.errorPayload || resData || err?.errorPayload || err || {};
+
+  // Check for nested errors object in various envelope layers
+  let errors =
+    resData?.errorPayload?.errors ??
+    resData?.errors ??
+    err?.errorPayload?.errors ??
+    payload?.errors ??
+    err?.errors;
+
+  const looksLikeFieldErrorsObject = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const entries = Object.entries(value);
+    if (entries.length === 0) return false;
+    return entries.every(([, v]) =>
+      typeof v === 'string' ||
+      (Array.isArray(v) && v.every((s) => typeof s === 'string'))
+    );
+  };
+
+  // If payload itself is a flat mapping of field -> error string
+  if (errors == null && looksLikeFieldErrorsObject(payload)) {
+    errors = payload;
+  }
+
+  // Extract message from standard locations
+  const rawMessage =
+    resData?.errorPayload?.message ||
+    resData?.message ||
+    payload?.message ||
+    err?.message ||
+    '';
+
+  if (Array.isArray(errors)) {
+    return {
+      fieldErrors: {},
+      message: errors[0] || rawMessage || 'Request failed.',
+      isValidation: false,
+    };
+  }
+
+  if (looksLikeFieldErrorsObject(errors)) {
+    const normalized = {};
+    for (const [key, value] of Object.entries(errors)) {
+      normalized[key] = Array.isArray(value) ? (value[0] || '') : (value ?? '');
+    }
+
+    const isValidation = Object.keys(normalized).length > 0;
+    return {
+      fieldErrors: normalized,
+      message: rawMessage || (isValidation ? 'Please correct the highlighted errors.' : 'Validation failed.'),
+      isValidation,
+    };
+  }
+
+  return {
+    fieldErrors: {},
+    message: rawMessage || 'Request failed.',
+    isValidation: false,
+  };
+}
+
+/**
+ * Display backend alertify payload or fallback success message.
+ *
+ * @param {Object} alertStore - Pinia alert store instance
+ * @param {Object} response - Raw API response
+ * @param {string} fallbackMessage - Fallback success text
+ */
+export function handleResponseAlert(alertStore, response, fallbackMessage) {
+  const payload =
+    response?.alertifyPayload ||
+    response?.dataPayload?.alertify ||
+    response?.alertify ||
+    response?.data?.alertifyPayload ||
+    response?.data?.dataPayload?.alertify ||
+    response?.data?.alertify;
+
+  if (payload && alertStore) {
+    alertStore.show(payload);
+  } else if (alertStore && fallbackMessage) {
+    alertStore.show({ theme: 'success', type: 'toast', message: fallbackMessage });
+  }
 }

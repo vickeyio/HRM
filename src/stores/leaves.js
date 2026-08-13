@@ -52,51 +52,32 @@ export const useLeaveStore = defineStore('leaves', () => {
   }
 
   async function addLeave(data) {
-    try {
-      const newRequest = await leaveService.create(data);
-      leaveRequests.value.unshift(newRequest);
-      return newRequest;
-    } catch (err) {
-      error.value = err.message || 'Failed to add leave request';
-      throw err;
-    }
+    const newRequest = await leaveService.create(data);
+    leaveRequests.value.unshift(newRequest);
+    return newRequest;
   }
 
   async function updateLeave(id, updatedData) {
-    try {
-      const updated = await leaveService.update(id, updatedData);
-      const idx = leaveRequests.value.findIndex(l => l.id === id);
-      if (idx !== -1) {
-        leaveRequests.value[idx] = updated;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to update leave';
-      throw err;
+    const updated = await leaveService.update(id, updatedData);
+    const idx = leaveRequests.value.findIndex(l => l.id === id);
+    if (idx !== -1) {
+      leaveRequests.value[idx] = updated;
     }
+    return updated;
   }
 
   async function updateStatus(id, newStatus) {
-    try {
-      const updated = await leaveService.updateStatus(id, newStatus);
-      const item = leaveRequests.value.find(l => l.id === id);
-      if (item) {
-        item.status = updated.status;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to update leave status';
+    const updated = await leaveService.updateStatus(id, newStatus);
+    const item = leaveRequests.value.find(l => l.id === id);
+    if (item) {
+      item.status = updated.status;
     }
+    return updated;
   }
 
   async function deleteLeave(id) {
-    try {
-      await leaveService.delete(id);
-      leaveRequests.value = leaveRequests.value.filter(l => l.id !== id);
-    } catch (err) {
-      error.value = err.message || 'Failed to delete leave request';
-      throw err;
-    }
+    await leaveService.delete(id);
+    leaveRequests.value = leaveRequests.value.filter(l => l.id !== id);
   }
 
   onBeforeMount(() => {

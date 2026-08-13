@@ -32,14 +32,12 @@ export const leaveService = {
   },
 
   async create(data) {
-    try {
-      const api = useApi('/hr/leave-type', { method: 'POST', autoFetch: false });
-      await api.request(data);
-      return api.data.value;
-    } catch (err) {
-      return { id: Date.now(), ...data, status: 'Pending' };
-    }
+    const api = useApi('/hr/leave-type', { method: 'POST', autoFetch: false });
+    await api.request(data);
+    if (api.error.value) throw api.error.value;
+    return api.data.value || { id: Date.now(), ...data, status: 'Pending' };
   }
 };
+
 
 export default leaveService;

@@ -1,8 +1,6 @@
-import { useAlertStore } from '../stores/alert';
+import alertUtil from '@/utils/alerts';
 
 export function useAlert() {
-  const alertStore = useAlertStore();
-
   const safeMessage = (msg) => {
     if (msg === null || msg === undefined) return '';
     if (typeof msg === 'object') return JSON.stringify(msg);
@@ -10,27 +8,43 @@ export function useAlert() {
   };
 
   const toastSuccess = (title, message) => {
-    if (message === undefined) { message = title; title = 'Success'; }
-    alertStore.show({ theme: 'success', title, message: safeMessage(message) });
+    if (message === undefined) {
+      message = title;
+      title = 'Success';
+    }
+    alertUtil.toast.success({ title, message: safeMessage(message) });
   };
 
   const toastError = (title, message) => {
-    if (message === undefined) { message = title; title = 'Error'; }
-    alertStore.show({ theme: 'danger', title, message: safeMessage(message) });
+    if (message === undefined) {
+      message = title;
+      title = 'Error';
+    }
+    alertUtil.toast.error({ title, message: safeMessage(message) });
   };
 
   const toastWarning = (title, message) => {
-    if (message === undefined) { message = title; title = 'Warning'; }
-    alertStore.show({ theme: 'warning', title, message: safeMessage(message) });
+    if (message === undefined) {
+      message = title;
+      title = 'Warning';
+    }
+    alertUtil.toast.warning({ title, message: safeMessage(message) });
   };
 
   const toastInfo = (title, message) => {
-    if (message === undefined) { message = title; title = 'Info'; }
-    alertStore.show({ theme: 'info', title, message: safeMessage(message) });
+    if (message === undefined) {
+      message = title;
+      title = 'Info';
+    }
+    alertUtil.toast.info({ title, message: safeMessage(message) });
+  };
+
+  const confirmAction = async (title, text, options) => {
+    return await alertUtil.dialog.confirm(title, text, options);
   };
 
   const showAlert = (options) => {
-    alertStore.show(options);
+    alertUtil.dialog.fire(options);
   };
 
   return {
@@ -38,8 +52,7 @@ export function useAlert() {
     toastError,
     toastWarning,
     toastInfo,
+    confirmAction,
     showAlert,
   };
 }
-
-export default useAlert;

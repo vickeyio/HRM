@@ -357,32 +357,32 @@
         </div>
       </div>
     </div>
-
-    <!-- Add/Edit Employee Form Modal -->
-    <EmployeeFormModal
-      :is-open="isModalOpen"
-      :employee-data="selectedEmployee"
-      @close="isModalOpen = false"
-      @save="handleSaveEmployee"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
 import { useEmployeeStore } from '../../stores/employees';
+import { useModalStore } from '../../stores/modal';
+import { useAlertStore } from '../../stores/alert';
+import { parseBackendError } from '../../utils/apiResponseHelper';
 import EmployeeFormModal from '../../components/hrm/EmployeeFormModal.vue';
+import ConfirmModal from '../../components/common/ConfirmModal.vue';
 
 const employeeStore = useEmployeeStore();
+const modalStore = useModalStore();
+const alertStore = useAlertStore();
 
-const viewMode = ref('list'); // 'list' | 'grid'
-const isModalOpen = ref(false);
+const viewMode = ref('list');
 const selectedEmployee = ref(null);
 const selectedDesignation = ref('');
 const sortBy = ref('recent');
 const sortByLabel = ref('Recently Added');
-
 const selectedEmployees = ref([]);
+
+const modalLoading = ref(false);
+const modalError = ref('');
+const modalFieldErrors = ref({});
 
 const activeCount = computed(() => employeeStore.employees.filter(e => e.status === 'Active').length);
 const inactiveCount = computed(() => employeeStore.employees.filter(e => e.status === 'Inactive').length);
@@ -402,7 +402,7 @@ const displayedEmployees = computed(() => {
   } else if (sortBy.value === 'desc') {
     result.sort((a, b) => b.name.localeCompare(a.name));
   } else {
-    result.sort((a, b) => (b.employee_id || 0) - (a.employee_id || 0));
+    result.sort((a, b) => (b.id || 0) - (a.id || 0));
   }
 
   return result;
@@ -414,7 +414,7 @@ const isAllSelected = computed(() => {
 
 function toggleSelectAll(e) {
   if (e.target.checked) {
-    selectedEmployees.value = displayedEmployees.value.map(emp => emp.employee_id);
+    selectedEmployees.value = displayedEmployees.value.map(emp => emp.id);
   } else {
     selectedEmployees.value = [];
   }
@@ -427,37 +427,103 @@ function setSort(type, label) {
 
 function openAddModal() {
   selectedEmployee.value = null;
-  isModalOpen.value = true;
+  modalLoading.value = false;
+  modalError.value = '';
+  modalFieldErrors.value = {};
+  modalStore.openModal({
+    component: EmployeeFormModal,
+    props: {
+      employeeData: null,
+      loading: modalLoading.value,
+      error: modalError.value,
+      fieldErrors: modalFieldErrors.value,
+    },
+    title: 'Add New Employee',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Add Employee',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await employeeStore.addEmployee(formData);
+    }
+  });
 }
 
 function openEditModal(emp) {
   selectedEmployee.value = { ...emp };
-  isModalOpen.value = true;
+  modalLoading.value = false;
+  modalError.value = '';
+  modalFieldErrors.value = {};
+  modalStore.openModal({
+    component: EmployeeFormModal,
+    props: {
+      employeeData: selectedEmployee.value,
+      loading: modalLoading.value,
+      error: modalError.value,
+      fieldErrors: modalFieldErrors.value,
+    },
+    title: 'Edit Employee Details',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Save Changes',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      const empId = selectedEmployee.value?.id || selectedEmployee.value?.employee_id;
+      if (empId) {
+        await employeeStore.updateEmployee(empId, formData);
+      }
+    }
+  });
 }
 
-async function handleSaveEmployee(formData) {
+async function handleFormSubmit(formData) {
+  modalLoading.value = true;
+  modalError.value = '';
+  modalFieldErrors.value = {};
   try {
-    if (selectedEmployee.value && selectedEmployee.value.employee_id) {
-      await employeeStore.updateEmployee(selectedEmployee.value.employee_id, formData);
-      if (selectedEmployee.value.employee_id) {
-        Object.assign(selectedEmployee.value, employeeStore.employees.find(e => e.employee_id === selectedEmployee.value.employee_id) || {});
-      }
+    if (selectedEmployee.value && (selectedEmployee.value.id || selectedEmployee.value.employee_id)) {
+      const empId = selectedEmployee.value.id || selectedEmployee.value.employee_id;
+      await employeeStore.updateEmployee(empId, formData);
     } else {
       await employeeStore.addEmployee(formData);
     }
+    modalStore.closeModal();
   } catch (err) {
-    console.error('Failed to save employee:', err);
+    const parsed = parseBackendError(err);
+    modalError.value = parsed.message;
+    modalFieldErrors.value = parsed.fieldErrors;
+    if (parsed.message && !parsed.isValidation) {
+      alertStore.show({ theme: 'danger', type: 'toast', title: 'Error', message: parsed.message });
+    }
+  } finally {
+    modalLoading.value = false;
   }
 }
 
 function confirmDelete(id) {
-  if (confirm('Are you sure you want to remove this employee?')) {
-    employeeStore.deleteEmployee(id).catch(err => console.error('Failed to delete employee:', err));
-  }
+  modalStore.openModal({
+    component: ConfirmModal,
+    props: {
+      heading: 'Delete Employee',
+      message: 'Are you sure you want to remove this employee? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      loading: false,
+    },
+    title: 'Confirm Delete',
+    size: 'sm',
+    centered: true,
+    showFooter: true,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    showConfirm: true,
+    showCancel: true,
+    disableCloseWhileSubmitting: true,
+    onConfirm: () => employeeStore.deleteEmployee(id)
+  });
 }
 
 function changeDepartment(emp, dept) {
-  employeeStore.updateEmployee(emp.employee_id, { department_id: dept }).catch(err => console.error('Failed to update employee:', err));
+  employeeStore.updateEmployee(emp.id, { department: dept }).catch(err => console.error('Failed to update employee:', err));
 }
 
 function exportData(format) {

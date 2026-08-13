@@ -36,38 +36,23 @@ export const useHolidayStore = defineStore('holidays', () => {
   }
 
   async function addHoliday(data) {
-    try {
-      const newHoliday = await holidayService.create(data);
-      holidays.value.unshift(newHoliday);
-      return newHoliday;
-    } catch (err) {
-      error.value = err.message || 'Failed to add holiday';
-      throw err;
-    }
+    const newHoliday = await holidayService.create(data);
+    holidays.value.unshift(newHoliday);
+    return newHoliday;
   }
 
   async function updateHoliday(id, updatedData) {
-    try {
-      const updated = await holidayService.update(id, updatedData);
-      const index = holidays.value.findIndex(h => h.holiday_id === id);
-      if (index !== -1) {
-        holidays.value[index] = updated;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to update holiday';
-      throw err;
+    const updated = await holidayService.update(id, updatedData);
+    const index = holidays.value.findIndex(h => h.holiday_id === id);
+    if (index !== -1) {
+      holidays.value[index] = updated;
     }
+    return updated;
   }
 
   async function deleteHoliday(id) {
-    try {
-      await holidayService.delete(id);
-      holidays.value = holidays.value.filter(h => h.holiday_id !== id);
-    } catch (err) {
-      error.value = err.message || 'Failed to delete holiday';
-      throw err;
-    }
+    await holidayService.delete(id);
+    holidays.value = holidays.value.filter(h => h.holiday_id !== id);
   }
 
   onBeforeMount(() => {

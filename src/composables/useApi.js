@@ -262,8 +262,12 @@ export function useApi(baseUrl, {
                 }
             }
 
-            const errorMsg = err.response?.data?.message || err.response?.data?.errors || err.message;
-            error.value = Array.isArray(errorMsg) ? errorMsg : [errorMsg];
+            error.value =
+                err.response?.data?.errorPayload?.errors ||
+                err.response?.data?.errors ||
+                err.response?.data?.errorPayload ||
+                err.response?.data ||
+                err;
             status.value = 'error';
             data.value = null;
 

@@ -39,38 +39,23 @@ export const useDesignationStore = defineStore('designations', () => {
   }
 
   async function addDesignation(data) {
-    try {
-      const newDes = await designationService.create(data);
-      designations.value.unshift(newDes);
-      return newDes;
-    } catch (err) {
-      error.value = err.message || 'Failed to add designation';
-      throw err;
-    }
+    const newDes = await designationService.create(data);
+    designations.value.unshift(newDes);
+    return newDes;
   }
 
   async function updateDesignation(id, updatedData) {
-    try {
-      const updated = await designationService.update(id, updatedData);
-      const index = designations.value.findIndex(d => d.job_title_id === id);
-      if (index !== -1) {
-        designations.value[index] = updated;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to update designation';
-      throw err;
+    const updated = await designationService.update(id, updatedData);
+    const index = designations.value.findIndex(d => d.job_title_id === id);
+    if (index !== -1) {
+      designations.value[index] = updated;
     }
+    return updated;
   }
 
   async function deleteDesignation(id) {
-    try {
-      await designationService.delete(id);
-      designations.value = designations.value.filter(d => d.job_title_id !== id);
-    } catch (err) {
-      error.value = err.message || 'Failed to delete designation';
-      throw err;
-    }
+    await designationService.delete(id);
+    designations.value = designations.value.filter(d => d.job_title_id !== id);
   }
 
   onBeforeMount(() => {

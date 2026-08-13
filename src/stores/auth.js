@@ -19,6 +19,10 @@ export const useAuthStore = defineStore('auth', () => {
       password: password
     });
 
+    if (loginApi.error.value) {
+      throw loginApi.error.value;
+    }
+
     const data = loginApi.data.value;
 
     // Extract token — backend returns { dataPayload: { data: { access_token: '...' } } }

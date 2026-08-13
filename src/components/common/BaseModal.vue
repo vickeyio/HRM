@@ -1,5 +1,5 @@
 <template>
-  <Teleport to="body">
+  <Teleport v-if="asModal" to="body">
     <div
       v-if="modelValue"
       class="modal fade show d-block"
@@ -11,23 +11,18 @@
     >
       <div :class="['modal-dialog', sizeClass, 'modal-dialog-centered']" role="document">
         <div class="modal-content">
-          <!-- Header -->
-          <div class="modal-header">
+          <div v-if="showHeader" class="modal-header">
             <h5 class="modal-title">{{ title }}</h5>
             <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
           </div>
 
-          <!-- Body -->
           <div class="modal-body">
             <slot></slot>
           </div>
 
-          <!-- Footer -->
-          <div class="modal-footer">
+          <div v-if="showFooter" class="modal-footer gap-2">
             <slot name="footer">
-              <button type="button" class="btn btn-light" @click="close" :disabled="loading">
-                Cancel
-              </button>
+              <button type="button" class="btn btn-light" @click="close" :disabled="loading">Cancel</button>
               <button type="button" class="btn btn-primary" @click="$emit('save')" :disabled="loading">
                 <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status"></span>
                 {{ saveLabel }}
@@ -38,15 +33,19 @@
       </div>
     </div>
   </Teleport>
+
+  <div v-if="!asModal">
+    <slot></slot>
+  </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted, watch, nextTick } from 'vue';
 
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    default: true
   },
   title: {
     type: String,
@@ -63,21 +62,44 @@ const props = defineProps({
   sizeClass: {
     type: String,
     default: 'modal-dialog-centered'
+  },
+  asModal: {
+    type: Boolean,
+    default: true
+  },
+  showHeader: {
+    type: Boolean,
+    default: true
+  },
+  showFooter: {
+    type: Boolean,
+    default: true
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'save', 'cancel']);
+const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'close']);
 
 function close() {
   emit('update:modelValue', false);
   emit('cancel');
+  emit('close');
 }
 
-// Handle ESC key press to close modal
 function handleKeyDown(e) {
-  if (e.key === 'Escape' && props.modelValue) {
+  if (e.key === 'Escape' && props.modelValue && props.asModal) {
     close();
   }
+}
+
+function updateScrollLock() {
+  nextTick(() => {
+    const openModals = document.querySelectorAll('.modal.show');
+    if (openModals.length > 0) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+  });
 }
 
 watch(
@@ -86,17 +108,22 @@ watch(
     if (val) {
       document.body.classList.add('modal-open');
     } else {
-      document.body.classList.remove('modal-open');
+      updateScrollLock();
     }
-  }
+  },
+  { immediate: true }
 );
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
+  if (props.modelValue && props.asModal) {
+    document.body.classList.add('modal-open');
+  }
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
-  document.body.classList.remove('modal-open');
+  updateScrollLock();
 });
 </script>
+

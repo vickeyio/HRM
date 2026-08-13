@@ -208,14 +208,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Modal Form -->
-    <LeaveFormModal
-      :is-open="isModalOpen"
-      :leave-data="selectedLeave"
-      @close="isModalOpen = false"
-      @save="handleSaveLeave"
-    />
   </div>
 </template>
 
@@ -223,44 +215,122 @@
 import { ref, toRef } from 'vue';
 import { useLeaveStore } from '../../stores/leaves';
 import { useCrudTable } from '../../composables/useCrudTable';
+import { useModalStore } from '../../stores/modal';
+import { useAlertStore } from '../../stores/alert';
+import { parseBackendError } from '../../utils/apiResponseHelper';
 import PageHeader from '../../components/common/PageHeader.vue';
 import DataTableToolbar from '../../components/common/DataTableToolbar.vue';
+import BaseDataTable from '../../components/common/BaseDataTable.vue';
 import LeaveFormModal from '../../components/hrm/LeaveFormModal.vue';
+import ConfirmModal from '../../components/common/ConfirmModal.vue';
 
 const leaveStore = useLeaveStore();
+const modalStore = useModalStore();
+const alertStore = useAlertStore();
 
-const isModalOpen = ref(false);
 const selectedLeave = ref(null);
+const modalLoading = ref(false);
+const modalError = ref('');
+const modalFieldErrors = ref({});
 
-const { displayedItems } = useCrudTable(toRef(leaveStore, 'filteredLeaves'), {
+const { displayedItems, ...tableHandlers } = useCrudTable(toRef(leaveStore, 'filteredLeaves'), {
   searchFields: ['employeeName', 'leaveType', 'department', 'reason']
 });
 
 function openAddModal() {
   selectedLeave.value = null;
-  isModalOpen.value = true;
+  modalLoading.value = false;
+  modalError.value = '';
+  modalFieldErrors.value = {};
+  modalStore.openModal({
+    component: LeaveFormModal,
+    props: {
+      leaveData: null,
+      loading: modalLoading.value,
+      error: modalError.value,
+      fieldErrors: modalFieldErrors.value,
+    },
+    title: 'Apply for Leave',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Submit Leave Request',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await leaveStore.addLeave(formData);
+    }
+  });
 }
 
 function openEditModal(leave) {
   selectedLeave.value = { ...leave };
-  isModalOpen.value = true;
+  modalLoading.value = false;
+  modalError.value = '';
+  modalFieldErrors.value = {};
+  modalStore.openModal({
+    component: LeaveFormModal,
+    props: {
+      leaveData: selectedLeave.value,
+      loading: modalLoading.value,
+      error: modalError.value,
+      fieldErrors: modalFieldErrors.value,
+    },
+    title: 'Edit Leave Request',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Update Request',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await leaveStore.updateLeave(leave.id, formData);
+    }
+  });
 }
 
-async function handleSaveLeave(formData) {
+async function handleFormSubmit(formData) {
+  modalLoading.value = true;
+  modalError.value = '';
+  modalFieldErrors.value = {};
   try {
     if (selectedLeave.value && selectedLeave.value.id) {
       await leaveStore.updateLeave(selectedLeave.value.id, formData);
     } else {
       await leaveStore.addLeave(formData);
     }
+    modalStore.closeModal();
   } catch (err) {
-    console.error('Failed to save leave request:', err);
+    const parsed = parseBackendError(err);
+    modalError.value = parsed.message;
+    modalFieldErrors.value = parsed.fieldErrors;
+    if (parsed.message && !parsed.isValidation) {
+      alertStore.show({ theme: 'danger', type: 'toast', title: 'Error', message: parsed.message });
+    }
+  } finally {
+    modalLoading.value = false;
   }
 }
 
 function confirmDelete(id) {
-  if (confirm('Are you sure you want to delete this leave request?')) {
-    leaveStore.deleteLeave(id).catch(err => console.error('Failed to delete leave request:', err));
-  }
+  modalStore.openModal({
+    component: ConfirmModal,
+    props: {
+      heading: 'Delete Leave Request',
+      message: 'Are you sure you want to delete this leave request? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      loading: false,
+    },
+    title: 'Confirm Delete',
+    size: 'sm',
+    centered: true,
+    showFooter: true,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    showConfirm: true,
+    showCancel: true,
+    disableCloseWhileSubmitting: true,
+    onConfirm: () => leaveStore.deleteLeave(id)
+  });
+}
+
+function exportData(format) {
+  alert(`Exporting Leave Requests as ${format.toUpperCase()}...`);
 }
 </script>

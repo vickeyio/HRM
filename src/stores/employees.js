@@ -41,38 +41,23 @@ export const useEmployeeStore = defineStore('employees', () => {
   }
 
   async function addEmployee(employeeData) {
-    try {
-      const newEmployee = await employeeService.create(employeeData);
-      employees.value.unshift(newEmployee);
-      return newEmployee;
-    } catch (err) {
-      error.value = err.message || 'Failed to add employee';
-      throw err;
-    }
+    const newEmployee = await employeeService.create(employeeData);
+    employees.value.unshift(newEmployee);
+    return newEmployee;
   }
 
   async function updateEmployee(id, updatedData) {
-    try {
-      const updated = await employeeService.update(id, updatedData);
-      const index = employees.value.findIndex(e => e.employee_id === id);
-      if (index !== -1) {
-        employees.value[index] = updated;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to update employee';
-      throw err;
+    const updated = await employeeService.update(id, updatedData);
+    const index = employees.value.findIndex(e => e.employee_id === id);
+    if (index !== -1) {
+      employees.value[index] = updated;
     }
+    return updated;
   }
 
   async function deleteEmployee(id) {
-    try {
-      await employeeService.delete(id);
-      employees.value = employees.value.filter(e => e.employee_id !== id);
-    } catch (err) {
-      error.value = err.message || 'Failed to delete employee';
-      throw err;
-    }
+    await employeeService.delete(id);
+    employees.value = employees.value.filter(e => e.employee_id !== id);
   }
 
   onBeforeMount(() => {

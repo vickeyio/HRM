@@ -55,6 +55,7 @@ export const employeeService = {
   async create(data) {
     const api = useApi('/hr/employee', { method: 'POST', autoFetch: false });
     await api.request(data);
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeEmployee(record) : data;
   },
@@ -62,6 +63,7 @@ export const employeeService = {
   async update(id, data) {
     const api = useApi(`/hr/employee/${id}`, { method: 'PUT', autoFetch: false });
     await api.request(data);
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeEmployee(record) : { ...data, employee_id: id };
   },
@@ -69,15 +71,18 @@ export const employeeService = {
   async delete(id) {
     const api = useApi(`/hr/employee/${id}`, { method: 'DELETE', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   },
 
   async restore(id) {
     const api = useApi(`/hr/employee/${id}`, { method: 'PATCH', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   }
 };
+
 
 /**
  * Normalize backend employee record to frontend-friendly shape.

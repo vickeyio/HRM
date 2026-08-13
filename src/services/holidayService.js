@@ -43,6 +43,7 @@ export const holidayService = {
   async create(data) {
     const api = useApi('/hr/public-holiday', { method: 'POST', autoFetch: false });
     await api.request(toHolidayPayload(data));
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeHoliday(record) : data;
   },
@@ -50,6 +51,7 @@ export const holidayService = {
   async update(id, data) {
     const api = useApi(`/hr/public-holiday/${id}`, { method: 'PUT', autoFetch: false });
     await api.request(toHolidayPayload(data));
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeHoliday(record) : { ...data, holiday_id: id };
   },
@@ -57,15 +59,18 @@ export const holidayService = {
   async delete(id) {
     const api = useApi(`/hr/public-holiday/${id}`, { method: 'DELETE', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   },
 
   async restore(id) {
     const api = useApi(`/hr/public-holiday/${id}`, { method: 'PATCH', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   }
 };
+
 
 /**
  * Normalize a backend PublicHoliday to frontend-friendly shape.

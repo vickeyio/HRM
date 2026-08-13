@@ -43,6 +43,7 @@ export const designationService = {
   async create(data) {
     const api = useApi('/hr/job-title', { method: 'POST', autoFetch: false });
     await api.request(toJobTitlePayload(data));
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeJobTitle(record) : data;
   },
@@ -50,6 +51,7 @@ export const designationService = {
   async update(id, data) {
     const api = useApi(`/hr/job-title/${id}`, { method: 'PUT', autoFetch: false });
     await api.request(toJobTitlePayload(data));
+    if (api.error.value) throw api.error.value;
     const record = unwrapRecord(api.data.value);
     return record ? normalizeJobTitle(record) : { ...data, job_title_id: id };
   },
@@ -57,15 +59,18 @@ export const designationService = {
   async delete(id) {
     const api = useApi(`/hr/job-title/${id}`, { method: 'DELETE', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   },
 
   async restore(id) {
     const api = useApi(`/hr/job-title/${id}`, { method: 'PATCH', autoFetch: false });
     await api.request();
+    if (api.error.value) throw api.error.value;
     return true;
   }
 };
+
 
 /**
  * Normalize backend JobTitle to frontend-friendly shape.

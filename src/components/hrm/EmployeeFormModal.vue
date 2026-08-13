@@ -1,13 +1,17 @@
 <template>
   <BaseModal
-    :model-value="isOpen"
-    @update:model-value="$emit('close')"
-    :title="isEditMode ? 'Edit Employee Details' : 'Add New Employee'"
-    :save-label="isEditMode ? 'Save Changes' : 'Add Employee'"
-    size-class="modal-lg"
+    as-modal="false"
+    :show-header="false"
+    :show-footer="false"
+    :loading="loading"
     @save="handleSubmit"
   >
     <form @submit.prevent="handleSubmit" id="employee-form">
+      <div v-if="error" class="alert alert-danger mb-3 py-2 px-3 fs-14">
+        <i class="ti ti-alert-circle me-1"></i>
+        {{ typeof error === 'string' ? error : (error.message || 'Validation error') }}
+      </div>
+
       <!-- Contact Grids Nav Tabs -->
       <div class="contact-grids-tab border-bottom mb-3">
         <ul class="nav nav-underline" role="tablist">
@@ -211,12 +215,22 @@ import BaseModal from '../common/BaseModal.vue';
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
-  employeeData: { type: Object, default: null }
+  employeeData: { type: Object, default: null },
+  error: { type: [String, Object], default: '' },
+  fieldErrors: { type: Object, default: () => ({}) },
+  loading: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['close', 'save']);
 
+function fieldError(key) {
+  const val = props.fieldErrors?.[key];
+  if (Array.isArray(val)) return val[0] || '';
+  return val || '';
+}
+
 const activeTab = ref('basic');
+
 const enableAllModules = ref(true);
 const selectAllPermissions = ref(false);
 
@@ -293,6 +307,16 @@ function handleSubmit() {
   const fullName = `${formData.value.firstName} ${formData.value.lastName}`.trim();
   formData.value.name = fullName || formData.value.name;
   emit('save', { ...formData.value });
-  closeModal();
 }
+
+defineExpose({
+  handleSubmit,
+  getFormData: () => {
+    const fullName = `${formData.value.firstName} ${formData.value.lastName}`.trim();
+    formData.value.name = fullName || formData.value.name;
+    return formData.value;
+  },
+  formData
+});
 </script>
+

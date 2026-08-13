@@ -14,7 +14,6 @@
       :columns="tableColumns"
       :items="paginatedItems"
       :is-loading="designationStore.isLoading"
-      :error="designationStore.error"
       selectable
       v-model:selected-ids="selectedIds"
       :is-all-selected="isAllSelected"
@@ -115,50 +114,58 @@ const {
 });
 
 function openAddModal() {
-  modalStore.open({
+  modalStore.openModal({
     component: DesignationFormModal,
     props: {
-      isOpen: true,
       designationData: null,
-      onSave: async (formData) => {
-        try {
-          await designationStore.addDesignation(formData);
-        } catch (err) {
-          console.error('Failed to add designation:', err);
-          throw err;
-        }
-      }
+    },
+    title: 'Add Designation',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Add Designation',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await designationStore.addDesignation(formData);
     }
   });
 }
 
 function openEditModal(des) {
-  modalStore.open({
+  modalStore.openModal({
     component: DesignationFormModal,
     props: {
-      isOpen: true,
       designationData: des,
-      onSave: async (formData) => {
-        try {
-          await designationStore.updateDesignation(des.id, formData);
-        } catch (err) {
-          console.error('Failed to update designation:', err);
-          throw err;
-        }
-      }
+    },
+    title: 'Edit Designation',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Save Changes',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await designationStore.updateDesignation(des.id, formData);
     }
   });
 }
 
 function confirmDelete(id) {
-  modalStore.open({
+  modalStore.openModal({
     component: ConfirmModal,
     props: {
       isOpen: true,
       heading: 'Delete Designation',
       message: 'Are you sure you want to delete this designation? This action cannot be undone.',
+      confirmLabel: 'Delete',
       onConfirm: () => designationStore.deleteDesignation(id)
-    }
+    },
+    title: 'Confirm Delete',
+    size: 'sm',
+    centered: true,
+    showFooter: true,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    showConfirm: true,
+    showCancel: true,
+    disableCloseWhileSubmitting: true,
   });
 }
 </script>

@@ -45,44 +45,58 @@
 
         <!-- Error Alert -->
         <div v-if="error" class="alert alert-danger py-2 small mb-3" role="alert">
+          <i class="ti ti-alert-circle me-1"></i>
           {{ error }}
         </div>
 
         <!-- Username / Email Field -->
         <div class="mb-3">
           <label class="form-label text-dark fw-medium fs-14 mb-1">Username or Email Address</label>
-          <div class="input-group">
+          <div class="input-group has-validation">
             <input
               type="text"
               v-model="username"
               class="form-control border-end-0 py-2"
+              :class="{ 'is-invalid': !!fieldError('username') || !!fieldError('email') || !!fieldError('login') }"
               placeholder="admin or admin@smarthr.co.in"
               required
+              :disabled="loading"
+              @input="clearFieldError('username', 'email', 'login')"
             />
-            <span class="input-group-text border-start-0 bg-white text-muted">
+            <span class="input-group-text border-start-0 bg-white text-muted" :class="{ 'border-danger': !!fieldError('username') || !!fieldError('email') || !!fieldError('login') }">
               <i class="ti ti-user"></i>
             </span>
+            <div v-if="fieldError('username') || fieldError('email') || fieldError('login')" class="invalid-feedback d-block">
+              {{ fieldError('username') || fieldError('email') || fieldError('login') }}
+            </div>
           </div>
         </div>
 
         <!-- Password Field -->
         <div class="mb-3">
           <label class="form-label text-dark fw-medium fs-14 mb-1">Password</label>
-          <div class="input-group">
+          <div class="input-group has-validation">
             <input
               :type="showPassword ? 'text' : 'password'"
               v-model="password"
               class="form-control border-end-0 py-2"
+              :class="{ 'is-invalid': !!fieldError('password') }"
               placeholder="••••••••"
               required
+              :disabled="loading"
+              @input="clearFieldError('password')"
             />
             <span
               class="input-group-text border-start-0 bg-white text-muted"
+              :class="{ 'border-danger': !!fieldError('password') }"
               @click="showPassword = !showPassword"
               style="cursor: pointer;"
             >
               <i :class="['ti', showPassword ? 'ti-eye' : 'ti-eye-off']"></i>
             </span>
+            <div v-if="fieldError('password')" class="invalid-feedback d-block">
+              {{ fieldError('password') }}
+            </div>
           </div>
         </div>
 
@@ -172,6 +186,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
+import { parseBackendError } from '../../utils/apiResponseHelper';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -183,15 +198,37 @@ const rememberMe = ref(true);
 const showPassword = ref(false);
 const loading = ref(false);
 const error = ref('');
+const fieldErrors = ref({});
+
+function fieldError(key) {
+  const val = fieldErrors.value?.[key];
+  if (Array.isArray(val)) return val[0] || '';
+  return val || '';
+}
+
+function clearFieldError(...keys) {
+  keys.forEach((key) => {
+    if (fieldErrors.value[key]) {
+      delete fieldErrors.value[key];
+    }
+  });
+  if (Object.keys(fieldErrors.value).length === 0) {
+    error.value = '';
+  }
+}
 
 function selectRole(role, defaultUser) {
   selectedRole.value = role;
   username.value = defaultUser;
+  error.value = '';
+  fieldErrors.value = {};
 }
 
 async function handleLogin() {
   loading.value = true;
   error.value = '';
+  fieldErrors.value = {};
+
   try {
     await authStore.login({
       username: username.value,
@@ -201,7 +238,26 @@ async function handleLogin() {
     });
     router.push('/');
   } catch (err) {
-    error.value = 'Invalid login credentials';
+    const parsed = parseBackendError(err);
+    if (parsed.isValidation && Object.keys(parsed.fieldErrors).length > 0) {
+      fieldErrors.value = parsed.fieldErrors;
+      error.value = parsed.message || 'Please correct the highlighted errors.';
+    } else {
+      const msg = parsed.message || 'Invalid login credentials';
+      error.value = msg;
+      
+      const lower = msg.toLowerCase();
+      if (lower.includes('password')) {
+        fieldErrors.value = { password: msg };
+      } else if (lower.includes('username') || lower.includes('email') || lower.includes('user') || lower.includes('account')) {
+        fieldErrors.value = { username: msg };
+      } else if (lower.includes('invalid') || lower.includes('credential')) {
+        fieldErrors.value = {
+          username: msg,
+          password: msg
+        };
+      }
+    }
   } finally {
     loading.value = false;
   }

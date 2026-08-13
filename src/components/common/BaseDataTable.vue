@@ -11,12 +11,6 @@
       <p class="mt-2 text-muted mb-0">Loading data...</p>
     </div>
 
-    <!-- Error State -->
-    <div v-else-if="error" class="card-body p-0 text-center py-5">
-      <i class="ti ti-alert-circle fs-1 mb-2 text-danger"></i>
-      <p class="text-muted mb-0">{{ error }}</p>
-    </div>
-
     <!-- Data Table -->
     <div v-else class="card-body p-0">
       <div class="table-responsive">

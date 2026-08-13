@@ -40,48 +40,28 @@ export const useDepartmentStore = defineStore('departments', () => {
   }
 
   async function addDepartment(data) {
-    try {
-      const newDept = await departmentService.create(data);
-      departments.value.unshift(newDept);
-      return newDept;
-    } catch (err) {
-      error.value = err.message || 'Failed to add department';
-      throw err;
-    }
+    const newDept = await departmentService.create(data);
+    departments.value.unshift(newDept);
+    return newDept;
   }
 
   async function updateDepartment(id, updatedData) {
-    try {
-      const updated = await departmentService.update(id, updatedData);
-      const index = departments.value.findIndex(d => d.department_id === id);
-      if (index !== -1) {
-        departments.value[index] = updated;
-      }
-      return updated;
-    } catch (err) {
-      error.value = err.message || 'Failed to update department';
-      throw err;
+    const updated = await departmentService.update(id, updatedData);
+    const index = departments.value.findIndex(d => d.department_id === id);
+    if (index !== -1) {
+      departments.value[index] = updated;
     }
+    return updated;
   }
 
   async function deleteDepartment(id) {
-    try {
-      await departmentService.delete(id);
-      departments.value = departments.value.filter(d => d.department_id !== id);
-    } catch (err) {
-      error.value = err.message || 'Failed to delete department';
-      throw err;
-    }
+    await departmentService.delete(id);
+    departments.value = departments.value.filter(d => d.department_id !== id);
   }
 
   async function restoreDepartment(id) {
-    try {
-      await departmentService.restore(id);
-      await fetchAll(true);
-    } catch (err) {
-      error.value = err.message || 'Failed to restore department';
-      throw err;
-    }
+    await departmentService.restore(id);
+    await fetchAll(true);
   }
 
   onBeforeMount(() => {

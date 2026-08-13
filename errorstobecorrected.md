@@ -1,0 +1,1 @@
+{"errorPayload":{"errors":{"facility_id":"Facility Id cannot be blank."}}} when adding a department

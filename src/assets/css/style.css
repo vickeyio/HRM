@@ -13227,6 +13227,7 @@ svg.collapse-open, svg.collapse-close {
 }
 .modal .modal-footer {
   border-top: 1px solid #E9EDF4;
+  gap: 10px;
 }
 .modal .modal-footer .btn {
   margin: 0;

@@ -14,7 +14,6 @@
       :columns="tableColumns"
       :items="paginatedItems"
       :is-loading="departmentStore.isLoading"
-      :error="departmentStore.error"
       selectable
       v-model:selected-ids="selectedIds"
       :is-all-selected="isAllSelected"
@@ -115,50 +114,58 @@ const {
 });
 
 function openAddModal() {
-  modalStore.open({
+  modalStore.openModal({
     component: DepartmentFormModal,
     props: {
-      isOpen: true,
       departmentData: null,
-      onSave: async (formData) => {
-        try {
-          await departmentStore.addDepartment(formData);
-        } catch (err) {
-          console.error('Failed to add department:', err);
-          throw err;
-        }
-      }
+    },
+    title: 'Add Department',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Add Department',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await departmentStore.addDepartment(formData);
     }
   });
 }
 
 function openEditModal(dept) {
-  modalStore.open({
+  modalStore.openModal({
     component: DepartmentFormModal,
     props: {
-      isOpen: true,
       departmentData: dept,
-      onSave: async (formData) => {
-        try {
-          await departmentStore.updateDepartment(dept.id, formData);
-        } catch (err) {
-          console.error('Failed to update department:', err);
-          throw err;
-        }
-      }
+    },
+    title: 'Edit Department',
+    size: 'lg',
+    showFooter: true,
+    confirmText: 'Save Changes',
+    disableCloseWhileSubmitting: true,
+    onConfirm: async (formData) => {
+      await departmentStore.updateDepartment(dept.id, formData);
     }
   });
 }
 
 function confirmDelete(id) {
-  modalStore.open({
+  modalStore.openModal({
     component: ConfirmModal,
     props: {
       isOpen: true,
       heading: 'Delete Department',
       message: 'Are you sure you want to delete this department? This action cannot be undone.',
+      confirmLabel: 'Delete',
       onConfirm: () => departmentStore.deleteDepartment(id)
-    }
+    },
+    title: 'Confirm Delete',
+    size: 'sm',
+    centered: true,
+    showFooter: true,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    showConfirm: true,
+    showCancel: true,
+    disableCloseWhileSubmitting: true,
   });
 }
 </script>
