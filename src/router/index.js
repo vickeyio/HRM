@@ -26,6 +26,18 @@ const routes = [
         name: 'ForgotPassword',
         component: () => import('../views/auth/ForgotPasswordView.vue'),
         meta: { guestOnly: true }
+      },
+      {
+        path: '/activate',
+        name: 'ActivateAccount',
+        component: () => import('../views/auth/ActivateAccountView.vue'),
+        meta: { guestOnly: true }
+      },
+      {
+        path: '/reset-password',
+        name: 'ResetPassword',
+        component: () => import('../views/auth/ResetPasswordView.vue'),
+        meta: { guestOnly: true }
       }
     ]
   },

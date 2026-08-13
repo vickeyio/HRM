@@ -112,16 +112,65 @@
 
         <!-- Security Tab -->
         <div v-else-if="activeTab === 'security'">
-          <form @submit.prevent="saveSettings">
-            <div class="mb-3">
-              <label class="form-label">Current Password</label>
-              <input type="password" class="form-control" v-model="security.currentPassword">
+          <form @submit.prevent="handleChangePassword" style="max-width: 500px;">
+            <div v-if="securitySuccess" class="alert alert-success py-2 px-3 small mb-3">
+              <i class="ti ti-circle-check me-1"></i>
+              {{ securitySuccess }}
             </div>
-            <div class="mb-3">
-              <label class="form-label">New Password</label>
-              <input type="password" class="form-control" v-model="security.newPassword">
+            <div v-if="securityError" class="alert alert-danger py-2 px-3 small mb-3">
+              <i class="ti ti-alert-circle me-1"></i>
+              {{ securityError }}
             </div>
-            <button type="submit" class="btn btn-primary">Update Password</button>
+
+            <div class="mb-3">
+              <label class="form-label">Current Password <span class="text-danger">*</span></label>
+              <input
+                type="password"
+                class="form-control"
+                :class="{ 'is-invalid': !!securityFieldErrors.currentPassword }"
+                v-model="security.currentPassword"
+                required
+                :disabled="securityLoading"
+              />
+              <div v-if="securityFieldErrors.currentPassword" class="invalid-feedback">
+                {{ securityFieldErrors.currentPassword }}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">New Password <span class="text-danger">*</span></label>
+              <input
+                type="password"
+                class="form-control"
+                :class="{ 'is-invalid': !!securityFieldErrors.newPassword }"
+                v-model="security.newPassword"
+                required
+                :disabled="securityLoading"
+              />
+              <div v-if="securityFieldErrors.newPassword" class="invalid-feedback">
+                {{ securityFieldErrors.newPassword }}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+              <input
+                type="password"
+                class="form-control"
+                :class="{ 'is-invalid': !!securityFieldErrors.confirmNewPassword }"
+                v-model="security.confirmNewPassword"
+                required
+                :disabled="securityLoading"
+              />
+              <div v-if="securityFieldErrors.confirmNewPassword" class="invalid-feedback">
+                {{ securityFieldErrors.confirmNewPassword }}
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" :disabled="securityLoading">
+              <span v-if="securityLoading" class="spinner-border spinner-border-sm me-1" role="status"></span>
+              Update Password
+            </button>
           </form>
         </div>
       </div>
@@ -131,6 +180,12 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useAuthStore } from '../../stores/auth';
+import { useAlertStore } from '../../stores/alert';
+import { parseBackendError } from '../../utils/apiResponseHelper';
+
+const authStore = useAuthStore();
+const alertStore = useAlertStore();
 
 const activeTab = ref('profile');
 
@@ -156,10 +211,60 @@ const notifications = ref({
 
 const security = ref({
   currentPassword: '',
-  newPassword: ''
+  newPassword: '',
+  confirmNewPassword: ''
 });
 
+const securityLoading = ref(false);
+const securitySuccess = ref('');
+const securityError = ref('');
+const securityFieldErrors = ref({});
+
 function saveSettings() {
-  alert('Settings saved successfully!');
+  alertStore.success('Saved', 'Settings saved successfully!');
+}
+
+async function handleChangePassword() {
+  securitySuccess.value = '';
+  securityError.value = '';
+  securityFieldErrors.value = {};
+
+  if (security.value.newPassword !== security.value.confirmNewPassword) {
+    securityFieldErrors.value = {
+      confirmNewPassword: 'Passwords do not match.'
+    };
+    return;
+  }
+
+  securityLoading.value = true;
+
+  try {
+    const res = await authStore.changePassword({
+      currentPassword: security.value.currentPassword,
+      newPassword: security.value.newPassword,
+      confirmNewPassword: security.value.confirmNewPassword
+    });
+
+    const msg = res?.dataPayload?.alertify?.message || 'Password changed successfully!';
+    securitySuccess.value = msg;
+    alertStore.success('Password Updated', msg);
+
+    security.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmNewPassword: ''
+    };
+  } catch (err) {
+    const parsed = parseBackendError(err);
+    if (parsed.isValidation && Object.keys(parsed.fieldErrors).length > 0) {
+      securityFieldErrors.value = parsed.fieldErrors;
+      securityError.value = parsed.message || 'Please check the form for errors.';
+    } else {
+      securityError.value = parsed.message || 'Failed to update password. Please check your current password.';
+      alertStore.error('Error', securityError.value);
+    }
+  } finally {
+    securityLoading.value = false;
+  }
 }
 </script>
