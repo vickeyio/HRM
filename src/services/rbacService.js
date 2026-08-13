@@ -1,67 +1,203 @@
 import { useApi } from '../composables/useApi';
 
-export const initialRoles = [
-  { id: '1', name: 'Administrator', description: 'Full access to all system modules and settings', permissionsCount: 45 },
-  { id: '2', name: 'HR Manager', description: 'Access to Core HR, Time Off, Payroll, and Recruitment', permissionsCount: 32 },
-  { id: '3', name: 'Employee', description: 'Employee Self-Service access for personal requests', permissionsCount: 12 }
-];
-
-export const initialPermissions = [
-  { id: '1', name: 'manage_employees', module: 'Employees', description: 'Create, update, and delete employee records' },
-  { id: '2', name: 'manage_departments', module: 'Departments', description: 'Manage company organizational hierarchy' },
-  { id: '3', name: 'approve_leaves', module: 'Leaves', description: 'Approve or reject employee leave requests' },
-  { id: '4', name: 'manage_payroll', module: 'Payroll', description: 'Process monthly salaries and payslips' },
-  { id: '5', name: 'view_reports', module: 'Analytics', description: 'Access executive HR reports and analytics' }
-];
+function extractDataArray(res) {
+  if (!res) return [];
+  const payload = res.dataPayload || res.data || res;
+  const data = payload?.data !== undefined ? payload.data : payload;
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    // If it's a map like { sa: { ... }, user: { ... } }
+    return Object.entries(data).map(([key, val]) => {
+      if (val && typeof val === 'object') {
+        return { id: val.id || val.role_id || val.group_id || val.permission_id || key, ...val };
+      }
+      return { id: key, name: val };
+    });
+  }
+  return [];
+}
 
 export const rbacService = {
-  async getRoles() {
-    try {
-      const api = useApi('/iam/rbac/roles', { autoFetch: false, enableCache: true });
-      await api.request();
-      const res = api.data.value;
-      if (res && Array.isArray(res)) return res;
-      if (res?.data && Array.isArray(res.data)) return res.data;
-      if (res?.dataPayload?.data && Array.isArray(res.dataPayload.data)) return res.dataPayload.data;
-    } catch (err) {
-      console.warn('API /iam/rbac/roles unavailable, using mock fallback:', err.message);
-    }
-    return initialRoles;
+  /**
+   * Fetch all roles with optional query parameters
+   */
+  async getRoles(params = {}) {
+    const api = useApi('/iam/rbac/roles', { method: 'GET', autoFetch: false });
+    await api.request(null, params);
+    if (api.error.value) throw api.error.value;
+    return extractDataArray(api.data.value);
   },
 
-  async getPermissions() {
-    try {
-      const api = useApi('/iam/rbac/permissions', { autoFetch: false, enableCache: true });
-      await api.request();
-      const res = api.data.value;
-      if (res && Array.isArray(res)) return res;
-      if (res?.data && Array.isArray(res.data)) return res.data;
-      if (res?.dataPayload?.data && Array.isArray(res.dataPayload.data)) return res.dataPayload.data;
-    } catch (err) {
-      console.warn('API /iam/rbac/permissions unavailable, using mock fallback:', err.message);
-    }
-    return initialPermissions;
+  /**
+   * Fetch single role details including available and assigned items
+   */
+  async getRole(id) {
+    const api = useApi(`/iam/rbac/role/${id}`, { method: 'GET', autoFetch: false });
+    await api.request();
+    if (api.error.value) throw api.error.value;
+    return api.data.value?.dataPayload?.data || api.data.value?.data || api.data.value;
   },
 
+  /**
+   * Create a new role
+   */
   async createRole(roleData) {
-    try {
-      const api = useApi('/iam/rbac/role', { method: 'POST', autoFetch: false });
-      await api.request(roleData);
-      return api.data.value;
-    } catch (err) {
-      console.warn('API create role failed, using local mock creation:', err.message);
-      return { id: String(Date.now()), permissionsCount: 0, ...roleData };
-    }
+    const api = useApi('/iam/rbac/role', { method: 'POST', autoFetch: false });
+    await api.request(roleData);
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
   },
 
-  async assignRole(userId, roleId) {
+  /**
+   * Update an existing role
+   */
+  async updateRole(id, roleData) {
+    const api = useApi(`/iam/rbac/role/${id}`, { method: 'PUT', autoFetch: false });
+    await api.request(roleData);
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Delete a role
+   */
+  async deleteRole(id) {
+    const api = useApi(`/iam/rbac/role/${id}`, { method: 'DELETE', autoFetch: false });
+    await api.request();
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Assign permissions to a role
+   */
+  async assignPermissionsToRole(roleId, permissions) {
+    const api = useApi(`/iam/rbac/role/assign/${roleId}`, { method: 'POST', autoFetch: false });
+    await api.request({ permissions });
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Remove permissions from a role
+   */
+  async removePermissionsFromRole(roleId, permissions) {
+    const api = useApi(`/iam/rbac/role/remove/${roleId}`, { method: 'POST', autoFetch: false });
+    await api.request({ permissions });
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Fetch all permissions
+   */
+  async getPermissions(params = {}) {
+    const api = useApi('/iam/rbac/permissions', { method: 'GET', autoFetch: false });
+    await api.request(null, params);
+    if (api.error.value) throw api.error.value;
+    return extractDataArray(api.data.value);
+  },
+
+  /**
+   * Fetch single permission details
+   */
+  async getPermission(id) {
+    const api = useApi(`/iam/rbac/permission/${id}`, { method: 'GET', autoFetch: false });
+    await api.request();
+    if (api.error.value) throw api.error.value;
+    return api.data.value?.dataPayload?.data || api.data.value?.data || api.data.value;
+  },
+
+  /**
+   * Update a permission
+   */
+  async updatePermission(id, data) {
+    const api = useApi(`/iam/rbac/permission/${id}`, { method: 'PUT', autoFetch: false });
+    await api.request(data);
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Fetch all groups
+   */
+  async getGroups(params = {}) {
+    const api = useApi('/iam/rbac/groups', { method: 'GET', autoFetch: false });
+    await api.request(null, params);
+    if (api.error.value) throw api.error.value;
+    return extractDataArray(api.data.value);
+  },
+
+  /**
+   * Fetch single group details including assigned roles
+   */
+  async getGroup(id) {
+    const api = useApi(`/iam/rbac/group/${id}`, { method: 'GET', autoFetch: false });
+    await api.request();
+    if (api.error.value) throw api.error.value;
+    return api.data.value?.dataPayload?.data || api.data.value?.data || api.data.value;
+  },
+
+  /**
+   * Create a new group
+   */
+  async createGroup(data) {
+    const api = useApi('/iam/rbac/group', { method: 'POST', autoFetch: false });
+    await api.request(data);
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Update an existing group
+   */
+  async updateGroup(id, data) {
+    const api = useApi(`/iam/rbac/group/${id}`, { method: 'PUT', autoFetch: false });
+    await api.request(data);
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Delete a group
+   */
+  async deleteGroup(id) {
+    const api = useApi(`/iam/rbac/group/${id}`, { method: 'DELETE', autoFetch: false });
+    await api.request();
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Assign roles to a group
+   */
+  async assignRolesToGroup(groupId, roles) {
+    const api = useApi(`/iam/rbac/group/assign/${groupId}`, { method: 'POST', autoFetch: false });
+    await api.request({ roles });
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Remove roles from a group
+   */
+  async removeRolesFromGroup(groupId, roles) {
+    const api = useApi(`/iam/rbac/group/remove/${groupId}`, { method: 'POST', autoFetch: false });
+    await api.request({ roles });
+    if (api.error.value) throw api.error.value;
+    return api.data.value;
+  },
+
+  /**
+   * Fetch system rules list for dropdowns
+   */
+  async getRules() {
     try {
-      const api = useApi(`/iam/rbac/role/assign/${roleId}`, { method: 'POST', autoFetch: false });
-      await api.request({ userId });
-      return api.data.value;
-    } catch (err) {
-      console.warn(`API assign role ${roleId} failed:`, err.message);
-      return true;
+      const api = useApi('/iam/rbac/rules', { method: 'GET', autoFetch: false });
+      await api.request();
+      return extractDataArray(api.data.value);
+    } catch (e) {
+      return [];
     }
   }
 };

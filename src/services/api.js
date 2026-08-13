@@ -45,8 +45,12 @@ apiClient.interceptors.response.use(
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       const refreshToken = localStorage.getItem('auth_refresh_token');
 
-      // Do not retry login or refresh requests
-      if (originalRequest.url?.includes('/iam/auth/login') || originalRequest.url?.includes('/iam/auth/refresh')) {
+      // Do not retry login, refresh, or logout requests
+      if (
+        originalRequest.url?.includes('/iam/auth/login') ||
+        originalRequest.url?.includes('/iam/auth/refresh') ||
+        originalRequest.url?.includes('/iam/auth/logout')
+      ) {
         return Promise.reject(error);
       }
 

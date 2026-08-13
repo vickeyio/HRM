@@ -217,6 +217,11 @@ const routes = [
         component: () => import('../views/settings/SettingsView.vue')
       },
       {
+        path: 'users',
+        name: 'Users',
+        component: () => import('../views/settings/UsersView.vue')
+      },
+      {
         path: 'roles-permissions',
         name: 'RolesPermissions',
         component: () => import('../views/settings/RolesPermissionsView.vue')

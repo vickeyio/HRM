@@ -4,7 +4,7 @@
     <slot name="toolbar"></slot>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="card-body p-0 text-center py-5">
+    <div v-if="tableLoading" class="card-body p-0 text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
@@ -41,7 +41,7 @@
             </slot>
           </thead>
           <tbody>
-            <tr v-if="!items || items.length === 0">
+            <tr v-if="!tableItems || tableItems.length === 0">
               <td :colspan="totalColspan" class="text-center py-5 text-muted">
                 <slot name="empty">
                   <i class="ti ti-search-off fs-1 d-block mb-2 text-secondary"></i>
@@ -49,7 +49,7 @@
                 </slot>
               </td>
             </tr>
-            <tr v-for="(item, idx) in items" :key="getItemKey(item, idx)">
+            <tr v-for="(item, idx) in tableItems" :key="getItemKey(item, idx)">
               <td v-if="selectable">
                 <div class="form-check form-check-md">
                   <input
@@ -67,12 +67,12 @@
                 :key="col.key"
                 :class="col.cellClass"
               >
-                <slot :name="`cell(${col.key})`" :item="item" :value="item[col.key]" :index="idx">
+                <slot :name="`cell(${col.key})`" :item="item" :row="item" :value="item[col.key]" :index="idx">
                   {{ item[col.key] !== undefined && item[col.key] !== null && item[col.key] !== '' ? item[col.key] : '—' }}
                 </slot>
               </td>
               <td v-if="$slots.actions" class="text-end">
-                <slot name="actions" :item="item" :index="idx"></slot>
+                <slot name="actions" :item="item" :row="item" :index="idx"></slot>
               </td>
             </tr>
           </tbody>
@@ -81,12 +81,12 @@
     </div>
 
     <!-- Pagination Footer -->
-    <div v-if="showPagination && (totalCount > 0 || items.length > 0)" class="p-0 border-top bg-white">
+    <div v-if="showPagination && (totalCount > 0 || tableItems.length > 0)" class="p-0 border-top bg-white">
       <slot
         name="pagination"
         :current-page="currentPage"
         :total-pages="totalPages"
-        :total-count="totalCount || items.length"
+        :total-count="totalCount || tableItems.length"
         :page-size="pageSize"
         :next-page="() => $emit('next-page')"
         :prev-page="() => $emit('prev-page')"
@@ -95,7 +95,7 @@
         <DataTablePagination
           :current-page="currentPage"
           :total-pages="totalPages"
-          :total-count="totalCount || items.length"
+          :total-count="totalCount || tableItems.length"
           :page-size="pageSize"
           :show-per-page="showPerPage"
           :per-page-options="perPageOptions"
@@ -114,7 +114,9 @@ import DataTablePagination from './DataTablePagination.vue';
 const props = defineProps({
   columns: { type: Array, default: () => [] },
   items: { type: Array, default: () => [] },
+  rows: { type: Array, default: null },
   isLoading: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false },
   error: { type: [String, Object], default: null },
   selectable: { type: Boolean, default: false },
   selectedIds: { type: Array, default: () => [] },
@@ -139,6 +141,13 @@ const emit = defineEmits([
   'change-per-page',
 ]);
 
+const tableItems = computed(() => {
+  if (props.rows && Array.isArray(props.rows)) return props.rows;
+  return props.items || [];
+});
+
+const tableLoading = computed(() => props.isLoading || props.loading);
+
 const totalColspan = computed(() => {
   let count = props.columns.length;
   if (props.selectable) count++;
@@ -148,7 +157,19 @@ const totalColspan = computed(() => {
 function getItemKey(item, fallbackIdx = null) {
   if (!item) return fallbackIdx;
   if (props.idKey && item[props.idKey] !== undefined && item[props.idKey] !== null) return item[props.idKey];
-  const foundId = item.id ?? item.department_id ?? item.job_title_id ?? item.employee_id ?? item.holiday_id ?? item.leave_id;
+  const foundId =
+    item.id ??
+    item.role_id ??
+    item.role_name ??
+    item.group_id ??
+    item.group_name ??
+    item.permission_id ??
+    item.permission_name ??
+    item.department_id ??
+    item.job_title_id ??
+    item.employee_id ??
+    item.holiday_id ??
+    item.leave_id;
   if (foundId !== undefined && foundId !== null) return foundId;
   return fallbackIdx;
 }

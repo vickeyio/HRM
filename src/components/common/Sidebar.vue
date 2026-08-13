@@ -1,20 +1,20 @@
 <template>
   <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
-    <!-- Sidebar Logo -->
+    <!-- Sidebar Logo (Pinned at top) -->
     <div class="sidebar-logo">
       <router-link to="/" class="logo logo-normal">
-        <img src="/assets/img/logo.svg" alt="Logo" />
+        <img src="/assets/img/logo.svg" alt="SmartHR Logo" />
       </router-link>
       <router-link to="/" class="logo-small">
-        <img src="/assets/img/logo-small.svg" alt="Logo" />
+        <img src="/assets/img/logo-small.svg" alt="SmartHR Logo" />
       </router-link>
       <router-link to="/" class="dark-logo">
-        <img src="/assets/img/logo-white.svg" alt="Logo" />
+        <img src="/assets/img/logo-white.svg" alt="SmartHR Logo" />
       </router-link>
     </div>
 
-    <!-- Sidebar Menu -->
+    <!-- Sidebar Menu (Scrolls cleanly underneath) -->
     <div class="sidebar-inner slimscroll">
       <div id="sidebar-menu" class="sidebar-menu">
         <ul>
@@ -138,6 +138,7 @@
             </a>
             <ul :style="{ display: openMenus.administration ? 'block' : 'none' }">
               <li><router-link to="/settings" :class="{ active: currentRoute === '/settings' }">Company Settings</router-link></li>
+              <li><router-link to="/users" :class="{ active: currentRoute === '/users' }">Users Management</router-link></li>
               <li><router-link to="/roles-permissions" :class="{ active: currentRoute === '/roles-permissions' }">Roles & Permissions</router-link></li>
               <li><router-link to="/billing" :class="{ active: currentRoute === '/billing' }">Subscription & Billing</router-link></li>
             </ul>
@@ -162,7 +163,7 @@ const activeMenu = computed(() => {
   if (['/payroll', '/payslips'].includes(currentRoute.value)) return 'payroll';
   if (['/jobs', '/candidates'].includes(currentRoute.value)) return 'recruitment';
   if (['/contacts', '/deals', '/pipeline', '/companies', '/leads', '/activity'].includes(currentRoute.value)) return 'crm';
-  if (['/settings', '/roles-permissions', '/billing', '/account'].includes(currentRoute.value)) return 'administration';
+  if (['/settings', '/users', '/roles-permissions', '/billing', '/account'].includes(currentRoute.value)) return 'administration';
   return '';
 });
 
@@ -184,37 +185,10 @@ watch(currentRoute, (newPath) => {
   if (['/payroll', '/payslips'].includes(newPath)) openMenus.value.payroll = true;
   if (['/jobs', '/candidates'].includes(newPath)) openMenus.value.recruitment = true;
   if (['/contacts', '/deals', '/pipeline', '/companies', '/leads', '/activity'].includes(newPath)) openMenus.value.crm = true;
-  if (['/settings', '/roles-permissions', '/billing', '/account'].includes(newPath)) openMenus.value.administration = true;
+  if (['/settings', '/users', '/roles-permissions', '/billing', '/account'].includes(newPath)) openMenus.value.administration = true;
 }, { immediate: true });
 
 function toggleMenu(menuKey) {
   openMenus.value[menuKey] = !openMenus.value[menuKey];
 }
 </script>
-
-<style scoped>
-.sidebar-inner {
-  height: calc(100vh - 60px);
-  overflow-y: auto !important;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-.sidebar-inner::-webkit-scrollbar {
-  width: 5px;
-}
-
-.sidebar-inner::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-inner::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 4px;
-}
-
-.sidebar-inner::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.35);
-}
-</style>

@@ -186,11 +186,18 @@ export const useAuthStore = defineStore('auth', () => {
   /**
    * Logout user from device
    */
-  function logout(device = 'current') {
-    if (token.value) {
-      const logoutApi = useApi('/iam/auth/logout', { method: 'POST', autoFetch: false });
-      logoutApi.request({ device }).catch(() => {});
+  async function logout({ device = 'web', callApi = true } = {}) {
+    const currentToken = token.value || localStorage.getItem('auth_token');
+
+    if (callApi && currentToken) {
+      try {
+        const logoutApi = useApi('/iam/auth/logout', { method: 'POST', autoFetch: false });
+        await logoutApi.request({ device });
+      } catch (e) {
+        console.warn('Logout API call finished with error:', e);
+      }
     }
+
     token.value = null;
     refreshTokenValue.value = null;
     user.value = null;
